@@ -1,0 +1,24 @@
+# 데이터: 서버에서만 존재, 절대 커밋하지 않음
+data/
+
+# 개인 설정
+CLAUDE.local.md
+.env
+
+# Python / uv
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+build/
+dist/
+
+# 도구 캐시
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 에디터 / OS
+.vscode/
+.idea/
+.DS_Store

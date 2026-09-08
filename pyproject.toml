@@ -1,0 +1,27 @@
+[project]
+name = "tickfold"
+version = "0.1.0"
+description = "Limit order book stream storage format and public benchmark"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "websockets",
+    "aiohttp",
+    "zstandard",
+    "numpy"
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tickfold*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
