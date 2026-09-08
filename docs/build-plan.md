@@ -8,7 +8,7 @@
 
 - [x] 시퀀스 번호 검증 → 갭 감지 시 호가창 무효화 + 스냅샷 재동기화 로직 — `book.py`
 - [x] 중복 제거: 새 메시지의 `u`가 직전 `u` 이하면 버림 — `book.py`
-- [ ] REST 스냅샷·exchangeInfo 요청 함수 (타임아웃, 429 재시도) — `rest.py`
+- [x] REST 스냅샷·exchangeInfo 요청 함수 (타임아웃, 429 재시도) — `rest.py`
 - [ ] 원본 페이로드를 재직렬화 없이 `{"rx":수신시각,"m":원본}` 줄로 저장, 시간 단위 파일 로테이션 → 즉시 zstd, 종목/날짜 파티셔닝 — `writer.py`
 - [ ] 바이낸스 WebSocket 구독: 호가 델타 + 체결, 여러 종목 combined stream — `ws.py`
 - [ ] 갭 감지 시 스냅샷 재요청 + 갭 로그 기록 — `ws.py`
