@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tickfold.collector.book import OrderBook
+from tickfold.collector.orderbook import OrderBook
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
