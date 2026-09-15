@@ -1,4 +1,6 @@
-# 구현 계획
+# 구현 계획 v1 (보관)
+
+2026-09-14 에 v2 로 전환하면서 보관한 문서다. 살아 있는 계획은 `build-plan-v2.md`. 체크박스는 보관 시점 상태이며 이후 갱신하지 않는다. 인코더·베이스라인·조회 벤치마크는 보류.
 
 ## 수집기 (collector)
 
@@ -6,13 +8,13 @@
 
 ### TODO
 
-- [x] 시퀀스 번호 검증 → 갭 감지 시 호가창 무효화 + 스냅샷 재동기화 로직 — `book.py`
-- [x] 중복 제거: 새 메시지의 `u`가 직전 `u` 이하면 버림 — `book.py`
-- [x] REST 스냅샷·exchangeInfo 요청 함수 (타임아웃, 429 재시도) — `rest.py`
+- [x] 시퀀스 번호 검증 → 갭 감지 시 호가창 무효화 + 스냅샷 재동기화 로직 — `orderbook.py`
+- [x] 중복 제거: 새 메시지의 `u`가 직전 `u` 이하면 버림 — `orderbook.py`
+- [x] REST 스냅샷·exchangeInfo 요청 함수 (타임아웃, 429 재시도) — `binance_rest.py`
 - [ ] 원본 페이로드를 재직렬화 없이 `{"rx":수신시각,"m":원본}` 줄로 저장, 시간 단위 파일 로테이션 → 즉시 zstd, 종목/날짜 파티셔닝 — `writer.py`
-- [ ] 바이낸스 WebSocket 구독: 호가 델타 + 체결, 여러 종목 combined stream — `ws.py`
-- [ ] 갭 감지 시 스냅샷 재요청 + 갭 로그 기록 — `ws.py`
-- [ ] 자동 재연결(백오프), 로컬 버퍼링 — `ws.py`
+- [ ] 바이낸스 WebSocket 구독: 호가 델타 + 체결, 여러 종목 combined stream — `binance_stream.py`
+- [ ] 갭 감지 시 스냅샷 재요청 + 갭 로그 기록 — `binance_stream.py`
+- [ ] 자동 재연결(백오프), 로컬 버퍼링 — `binance_stream.py`
 - [ ] 진입점, 설정은 환경변수, SIGTERM 시 버퍼 플러시 후 종료 — `main.py`
 - [ ] `/metrics`, `/healthz` — `metrics.py`
 - [ ] 파일마다 sha256 + 스키마 버전을 매니페스트에 기록 — `writer.py`
