@@ -1,0 +1,14 @@
+[Unit]
+Description=Tickfold Binance collector
+
+[Service]
+Type=simple
+WorkingDirectory=%h/tickfold
+EnvironmentFile=-%h/tickfold/.env
+ExecStart=%h/tickfold/.venv/bin/python -m tickfold.collector.main
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
