@@ -36,9 +36,9 @@
 - [x] 중복 제거 — `orderbook.py`
 - [x] REST 스냅샷·exchangeInfo 요청 (타임아웃, 429 재시도) — `binance_rest.py`
 - [x] 원본을 `{"rx":수신시각,"m":원본}` 줄로 저장, 시간 단위 로테이션 후 zstd — `writer.py`
-- [ ] combined stream 구독 (호가 델타 + 체결 + 검증용 `@depth20@100ms`). 종목 목록은 설정값이고 9~10월은 길이 1 — `binance_stream.py`
-- [ ] 갭 발생 시 스냅샷 재요청과 갭 로그 — `binance_stream.py`
-- [ ] 백오프 재연결, 5초마다 flush — `binance_stream.py`
+- [x] combined stream 구독 (호가 델타 + 체결 + 검증용 `@depth20@100ms`). 종목 목록은 설정값이고 9~10월은 길이 1 — `binance_stream.py`
+- [x] 갭 발생 시 스냅샷 재요청과 갭 로그 — `binance_stream.py`
+- [x] 백오프 재연결, 5초마다 flush — `binance_stream.py`
 - [ ] 24시간 강제 종료 대비 겹치기 재연결 (9월 필수, 무중단 판정 기준) — `binance_stream.py`
 - [ ] 상위 20레벨 대조: `@depth20` 의 `lastUpdateId == u` 인 시점에 재구성 호가창과 비교 — `binance_stream.py`
 - [ ] 진입점, 환경변수 설정, SIGTERM 시 flush 후 종료 — `main.py`

@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from tickfold.collector.orderbook import OrderBook
+from tickfold.collector.binance_stream import DEPTH, split_stream
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -52,13 +53,14 @@ def test_zero_quantity_removes_level():
     assert "50001.00" not in book.asks
 
 @pytest.mark.skipif(
-    not (FIXTURES / "btcusdt_depth.ndjson").exists(), reason="fixture not captured yet"
+    not (FIXTURES / "btcusdt_combined.ndjson").exists(), reason="fixture not captured yet"
 )
 def test_fixture_replay_has_no_gap():
     # 캡처 스크립트는 연결 직후 스냅샷을 받으므로: 전부 pending으로 버퍼링 -> 스냅샷 적용 -> 버퍼 소진
     snap = json.loads((FIXTURES / "btcusdt_snapshot.json").read_bytes())
-    with open(FIXTURES / "btcusdt_depth.ndjson", "rb") as f:
-        msgs = [json.loads(line)["m"] for line in f]
+    with open(FIXTURES / "btcusdt_combined.ndjson", "rb") as f:
+        frames = [json.loads(line)["m"] for line in f]
+    msgs = [fr["data"] for fr in frames if split_stream(fr["stream"])[1] == DEPTH]
  
     book = OrderBook()
     for m in msgs:
