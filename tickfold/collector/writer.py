@@ -84,14 +84,22 @@ class RawWriter:
         while (dst.exists()): # 같은 시간 파일이 이미 압축되어 있으면 덮어쓰지 않고 파트 번호를 붙임
             dst = src.with_name(f"{src.name}.{n}.zst")
             n += 1
-        cctx = zstandard.ZstdCompressor(level=self.level)
-        with open(src, "rb") as i, open(dst, "wb") as o:
-            cctx.copy_stream(i, o)
+        tmp = dst.with_name(dst.name + ".tmp")
+        # 체크섬이 없으면 비트가 뒤집혀도 오류 없이 다른 내용으로 풀림
+        cctx = zstandard.ZstdCompressor(level=self.level, write_checksum=True, write_content_size=True)
+        with open(src, "rb") as i, open(tmp, "wb") as o:
+            cctx.copy_stream(i, o, size=src.stat().st_size)
+            o.flush()
+            os.fsync(o.fileno())
+        os.replace(tmp, dst) # 이름 바꾸기는 원자적이라 반쪽짜리 .zst 가 생길 수 없음
         src.unlink()
 
     def _compress_leftovers(self) -> None:
         """비정상 종료로 남은 .ndjson 중 이미 지난 시간대의 파일을 압축한다.
         현재 시간대의 파일은 그대로 두고 이어서 append 한다."""
+
+        for tmp in self.root.glob("*/*/*.zst.tmp"):
+            tmp.unlink() # 압축 도중 죽은 흔적. 원본 .ndjson 이 남아 있으니 버려도 됨
 
         now_date, now_hour = self._date_hour(_now_ns())
         for src in self.root.glob("*/*/*.ndjson"):

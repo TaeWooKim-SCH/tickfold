@@ -94,3 +94,24 @@ def test_snapshot_file_is_daily(tmp_path):
  
     assert (tmp_path / "BTCUSDT" / "2026-09-10" / "snapshots.ndjson.zst").exists()
     assert (tmp_path / "BTCUSDT" / "2026-09-11" / "snapshots.ndjson").exists()
+
+def test_compressed_frame_carries_checksum_and_size(tmp_path):
+    w = RawWriter(tmp_path)
+    w.write("BTCUSDT", "depth", T10, RAW1)
+    w.close()
+
+    data = (tmp_path / "BTCUSDT" / "2026-09-10" / "10.depth.ndjson.zst").read_bytes()
+    params = zstandard.get_frame_parameters(data)
+    assert params.has_checksum
+    assert params.content_size == len(b'{"rx":%d,"m":' % T10 + RAW1 + b"}\n")
+
+def test_interrupted_compress_leaves_no_broken_zst(tmp_path):
+    day = tmp_path / "BTCUSDT" / "2020-01-01"
+    day.mkdir(parents=True)
+    (day / "00.depth.ndjson").write_bytes(b'{"rx":1,"m":{}}\n')
+    (day / "00.depth.ndjson.zst.tmp").write_bytes(b"half written")  # 압축 도중 죽은 흔적
+
+    RawWriter(tmp_path)  # 재시작
+
+    assert sorted(p.name for p in day.iterdir()) == ["00.depth.ndjson.zst"]
+    assert read_zst(day / "00.depth.ndjson.zst") == b'{"rx":1,"m":{}}\n'
