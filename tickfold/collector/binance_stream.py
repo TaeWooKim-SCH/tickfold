@@ -17,7 +17,7 @@ import websockets
 
 from tickfold.collector.binance_rest import BinanceBanned, BinanceRestError, fetch_snapshot
 from tickfold.collector.orderbook import OrderBook
-from tickfold.collector.writer import RawWriter
+from tickfold.collector.writer import RawWriter, last_stored_line
 
 log = logging.getLogger(__name__)
 
@@ -69,6 +69,17 @@ class StreamHandler:
         self._resyncing: set[str] = set()
         self._last_seen_u: dict[str, int] = {}
         self._last_snapshot_at: dict[str, float] = {}
+
+    def resume_sequence(self, root: Path) -> None:
+        """직전 실행이 마지막으로 저장한 순번에서 이어 간다. 재시작 사이에 놓친 것이 갭으로 기록되게."""
+        for symbol in self.books:
+            line = last_stored_line(root, symbol, DEPTH)
+            if (line is None):
+                continue
+            try:
+                self._last_seen_u[symbol] = json.loads(line)["m"]["data"]["u"]
+            except (ValueError, KeyError, TypeError):
+                log.warning("resume %s: 마지막 줄에서 순번을 읽지 못했다", symbol)
 
     def handle(self, frame: bytes, rx_ns: int) -> None:
         msg = json.loads(frame)
@@ -191,11 +202,6 @@ async def _pump(ws, handler: StreamHandler) -> None:
         frame = await ws.recv(decode=False)  # 바이트로 받아야 재직렬화가 없다
         handler.handle(frame, time.time_ns())  # 받은 직후에 찍어야 수신 시각이 맞다
 
-async def _pump(ws, handler: StreamHandler) -> None:
-    while True:
-        frame = await ws.recv(decode=False)  # 바이트로 받아야 재직렬화가 없다
-        handler.handle(frame, time.time_ns())  # 받은 직후에 찍어야 수신 시각이 맞다
-
 async def _connect_forever(handler: StreamHandler, url: str) -> None:
     attempt = 0
     while True:
@@ -227,6 +233,8 @@ async def run(symbols, root, ws_base: str = WS_BASE) -> None:
     writer = RawWriter(Path(root))
     async with aiohttp.ClientSession() as session:
         handler = StreamHandler(session, writer, symbols)
+        handler.resume_sequence(Path(root))
+
         flusher = asyncio.create_task(_flush_forever(writer))
         refresher = asyncio.create_task(_refresh_forever(handler))
         try:

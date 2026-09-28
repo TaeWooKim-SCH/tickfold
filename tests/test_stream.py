@@ -255,3 +255,23 @@ async def test_stale_snapshot_is_refreshed_regardless_of_range(tmp_path, monkeyp
     assert h.gaps == 0  # 주기 갱신은 갭이 아니다
     snapshot_file = next(tmp_path.rglob("snapshots.ndjson"))
     assert len(snapshot_file.read_bytes().splitlines()) == 2
+
+async def test_gap_across_a_restart_is_recorded(tmp_path):
+    before = RawWriter(tmp_path)
+    h = StreamHandler(None, before, ["BTCUSDT"])
+    h.books["BTCUSDT"].apply_snapshot({"lastUpdateId": 125, "bids": [], "asks": []})
+    h.handle(frame("btcusdt@depth@100ms", depth(126, 130)), T)
+    h.handle(frame("btcusdt@depth@100ms", depth(131, 135)), T)
+    before.close()  # 수집기가 내려갔다
+
+    w = RawWriter(tmp_path)
+    s = FakeSession(FakeResponse(200, payload={"lastUpdateId": 140, "bids": [], "asks": []}))
+    h = StreamHandler(s, w, ["BTCUSDT"])
+    h.resume_sequence(tmp_path)
+    h.handle(frame("btcusdt@depth@100ms", depth(141, 145)), T)  # 내려가 있던 동안 136~140 을 놓쳤다
+    await drain(h)
+    w.flush()
+
+    assert h.gaps == 1
+    rec = json.loads(next(tmp_path.rglob("*.gap.ndjson")).read_bytes())["m"]
+    assert (rec["last_u"], rec["U"], rec["missed"]) == (135, 141, 5)
