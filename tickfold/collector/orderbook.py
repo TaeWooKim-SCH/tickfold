@@ -17,6 +17,10 @@ class OrderBook:
         self.last_u: int | None = None # None이면 동기화 안됨
         self.awaiting_first = False # 스냅샷 직후 첫 이벤트 대기중
         self.buffer: list[dict] = [] # 동기화 전에 받은 메세지
+        self.lowest_known_bid: float | None = None # 스냅샷이 아는 가장 낮은 매수가. 모르면 None
+        self.highest_known_ask: float | None = None # 스냅샷이 아는 가장 높은 매도가
+        self._bid_span = 0.0 # 스냅샷 시점의 최우선 매수가에서 가장 낮은 매수가까지의 폭
+        self._ask_span = 0.0 # 최우선 매도가에서 가장 높은 매도가까지의 폭
 
     @property
     def synced(self) -> bool:
@@ -32,6 +36,7 @@ class OrderBook:
         self.asks = {p: q for p, q in snap["asks"]}
         self.last_u = snap["lastUpdateId"]
         self.awaiting_first = True
+        self._remember_range(snap)
 
         pending, self.buffer = self.buffer, []
         return [self.apply_delta(m) for m in pending]
@@ -59,12 +64,47 @@ class OrderBook:
         self.last_u = u
         return "ok"
 
-    def _gap(self, msg: dict) -> str:
-        # 호가창을 무효화하고 이 메세지부터 다시 버퍼링한다
-        # 호출자는 새 스냅샷을 받아 apply_snapshot을 호출해야 한다
+    def range_headroom(self, best_bid: float, best_ask: float) -> float | None:
+        """범위 끝까지 남은 여유를 스냅샷 때 폭에 대한 비율로 돌려준다. 양쪽 중 작은 쪽.
+
+        1.0 이면 스냅샷 직후와 같고, 0 이하면 가격이 아는 범위를 벗어났다.
+        동기화 전이거나 범위를 모르면 None.
+        """
+        if (not self.synced or self.lowest_known_bid is None):
+            return None
+        bid_headroom = (best_bid - self.lowest_known_bid) / self._bid_span
+        ask_headroom = (self.highest_known_ask - best_ask) / self._ask_span
+        return min(bid_headroom, ask_headroom)
+
+    def _remember_range(self, snap: dict) -> None:
+        # 스냅샷은 5000레벨까지만 준다. 그 밖에서 쉬고 있던 주문은 바뀌기 전까지 델타에 안 나오므로
+        # 호가창을 믿을 수 있는 것은 이 범위 안뿐이다
+        self.lowest_known_bid = self.highest_known_ask = None
+        if (not snap["bids"] or not snap["asks"]):
+            return
+        bid_prices = [float(price) for price, _ in snap["bids"]]
+        ask_prices = [float(price) for price, _ in snap["asks"]]
+        bid_span = max(bid_prices) - min(bid_prices)
+        ask_span = max(ask_prices) - min(ask_prices)
+        if (bid_span <= 0 or ask_span <= 0):
+            return
+        self.lowest_known_bid, self.highest_known_ask = min(bid_prices), max(ask_prices)
+        self._bid_span, self._ask_span = bid_span, ask_span
+
+    def invalidate(self) -> None:
+        """호가창을 일부러 무효로 만든다. 새 스냅샷으로 다시 세우려는 것이고 갭이 아니다.
+
+        이후 델타는 버퍼에 쌓였다가 apply_snapshot 에서 적용된다.
+        """
         self.last_u = None
         self.awaiting_first = False
-        self.buffer = [msg]
+        self.buffer = []
+
+    def _gap(self, msg: dict) -> str:
+        # 순번이 끊긴 이 메세지부터 다시 버퍼링한다
+        # 호출자는 새 스냅샷을 받아 apply_snapshot을 호출해야 한다
+        self.invalidate()
+        self.buffer.append(msg)
         return "gap"
 
     @staticmethod

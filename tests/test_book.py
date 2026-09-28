@@ -52,6 +52,43 @@ def test_zero_quantity_removes_level():
     assert book.bids["50000.00"] == "2.5"
     assert "50001.00" not in book.asks
 
+def test_invalidate_buffers_deltas_until_the_next_snapshot():
+    book = OrderBook()
+    book.apply_snapshot(snapshot(100))
+    book.apply_delta(msg(101, 105))
+
+    book.invalidate()
+    assert not book.synced
+    assert book.apply_delta(msg(106, 110)) == "pending"  # 갭이 아니라 대기
+    assert book.apply_delta(msg(111, 115)) == "pending"
+
+    results = book.apply_snapshot(snapshot(108))  # 버퍼 중간에 걸치는 스냅샷
+    assert results == ["ok", "ok"]
+    assert book.last_u == 115
+
+def ladder():
+    # 매수 100~91, 매도 101~110. 양쪽 폭이 9
+    bids = [[f"{price}.00", "1"] for price in range(100, 90, -1)]
+    asks = [[f"{price}.00", "1"] for price in range(101, 111)]
+    return snapshot(156, bids, asks)
+
+def test_headroom_shrinks_as_price_nears_the_edge_of_the_snapshot():
+    book = OrderBook()
+    book.apply_snapshot(ladder())
+    assert book.range_headroom(100.0, 101.0) == pytest.approx(1.0)   # 스냅샷 직후
+    assert book.range_headroom(92.8, 93.8) == pytest.approx(0.2)     # 아래쪽 여유가 9 중 1.8 남음
+    assert book.range_headroom(108.0, 108.2) == pytest.approx(0.2)   # 위쪽도 같은 규칙
+    assert book.range_headroom(90.0, 91.0) < 0                       # 아는 범위를 벗어남
+
+def test_headroom_is_unknown_without_a_usable_range():
+    book = OrderBook()
+    assert book.range_headroom(100.0, 101.0) is None   # 스냅샷 전
+    book.apply_snapshot(snapshot(156))                 # 빈 스냅샷
+    assert book.range_headroom(100.0, 101.0) is None
+    book.apply_snapshot(ladder())
+    book.apply_delta(msg(170, 172))                    # 갭으로 무효가 됨
+    assert book.range_headroom(100.0, 101.0) is None
+
 @pytest.mark.skipif(
     not (FIXTURES / "btcusdt_combined.ndjson").exists(), reason="fixture not captured yet"
 )
