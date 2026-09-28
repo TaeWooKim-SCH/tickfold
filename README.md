@@ -22,6 +22,7 @@ tickfold/           Python package
 docs/               build plan and analysis notes
 scripts/            fixture capture
 tests/              pytest suite (no network required)
+deploy/             systemd user unit for the collector
 ```
 
 Additional packages (`replay/`, `reduce/`, `model/`, `experiments/`, `deploy/`) will be added as each stage begins; names are settled when the stage starts.
@@ -35,13 +36,14 @@ uv sync
 uv run pytest
 ```
 
-Run the collector locally (entry point lands with plan section 1, `tickfold/collector/main.py`):
+Run the collector locally:
 
 ```bash
-uv run python -m tickfold.collector.main
+cp .env.example .env
+uv run --env-file .env python -m tickfold.collector.main
 ```
 
-Configuration will be via environment variables once that entry point exists; the list will live in `docs/build-plan-v2.md`.
+Configuration is via environment variables. `.env.example` lists them; copy it to `.env`, which is not committed. To run the collector as a service, see `deploy/tickfold-collector.service`.
 
 ## Data
 
