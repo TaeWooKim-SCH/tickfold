@@ -4,7 +4,7 @@ from pathlib import Path
  
 import zstandard
  
-from tickfold.collector.writer import RawWriter
+from tickfold.collector.writer import RawWriter, last_stored_line
 
 def ns(y, m, d, h, mi=0):
     return int(datetime(y, m, d, h, mi, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
@@ -115,3 +115,18 @@ def test_interrupted_compress_leaves_no_broken_zst(tmp_path):
 
     assert sorted(p.name for p in day.iterdir()) == ["00.depth.ndjson.zst"]
     assert read_zst(day / "00.depth.ndjson.zst") == b'{"rx":1,"m":{}}\n'
+
+def test_last_stored_line_reads_the_newest_file_and_skips_a_torn_tail(tmp_path):
+    import os
+    day = tmp_path / "BTCUSDT" / "2026-09-10"
+    day.mkdir(parents=True)
+    older = day / "09.depth.ndjson.zst"
+    older.write_bytes(zstandard.ZstdCompressor().compress(b'{"rx":1,"m":"older"}\n'))
+    newest = day / "10.depth.ndjson"
+    newest.write_bytes(b'{"rx":2,"m":"a"}\n{"rx":3,"m":"b"}\n{"rx":4,"m":"cut of')  # 쓰다가 죽은 꼬리
+    other_stream = day / "10.depth20.ndjson"
+    other_stream.write_bytes(b'{"rx":9,"m":"other"}\n')
+    os.utime(older, (1000, 1000)); os.utime(newest, (2000, 2000)); os.utime(other_stream, (3000, 3000))
+
+    assert last_stored_line(tmp_path, "BTCUSDT", "depth") == b'{"rx":3,"m":"b"}'
+    assert last_stored_line(tmp_path, "ETHUSDT", "depth") is None

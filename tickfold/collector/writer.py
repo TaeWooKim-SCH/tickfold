@@ -113,6 +113,23 @@ class RawWriter:
             if (is_past):
                 self._compress(src)
 
+def last_stored_line(root: Path, symbol: str, stream: str) -> bytes | None:
+    """그 종목·스트림으로 가장 최근에 쓴 파일의 마지막 온전한 줄. 없으면 None.
+
+    다시 뜬 수집기가 직전에 어디까지 받았는지 알려고 읽는다.
+    """
+    files = [path for path in Path(root).glob(f"{symbol}/*/*.{stream}.ndjson*") if not path.name.endswith(".tmp")]
+    for path in sorted(files, key=lambda path: path.stat().st_mtime, reverse=True):
+        if (path.suffix == ".zst"):
+            with open(path, "rb") as compressed:
+                content = zstandard.ZstdDecompressor().stream_reader(compressed).read()
+        else:
+            content = path.read_bytes()
+        complete_lines = content[: content.rfind(b"\n") + 1].splitlines()  # 크래시로 잘린 꼬리는 버린다
+        if (complete_lines):
+            return complete_lines[-1]
+    return None
+
 def _now_ns() -> int:
     import time
 
