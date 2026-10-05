@@ -275,3 +275,13 @@ async def test_gap_across_a_restart_is_recorded(tmp_path):
     assert h.gaps == 1
     rec = json.loads(next(tmp_path.rglob("*.gap.ndjson")).read_bytes())["m"]
     assert (rec["last_u"], rec["U"], rec["missed"]) == (135, 141, 5)
+
+def test_shutdown_notice_is_kept_not_raised(tmp_path):
+    w = RawWriter(tmp_path)
+    h = StreamHandler(None, w, ["BTCUSDT"])
+    f = b'{"stream":"!serverShutdown","data":{"e":"serverShutdown","E":1770123456789}}'
+    h.handle(f, T)  # 스트림 이름에 @ 가 없다. 예외가 나면 알림은 저장되지 않고 연결이 끊긴다
+    w.flush()
+
+    line = (tmp_path / "_control" / "2026-09-15" / "00.raw.ndjson").read_bytes().splitlines()[0]
+    assert line == b'{"rx":%d,"m":' % T + f + b"}"

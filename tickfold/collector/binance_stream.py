@@ -83,8 +83,9 @@ class StreamHandler:
 
     def handle(self, frame: bytes, rx_ns: int) -> None:
         msg = json.loads(frame)
-        if ("stream" not in msg):
-            # 제어·오류 프레임. 버리지 않고 남긴다. 여기서 예외를 내면 연결이 통째로 끊긴다
+        if ("@" not in msg.get("stream", "")):
+            # 제어·오류 프레임. 스트림 이름이 없거나 "!serverShutdown" 처럼 @ 가 없다.
+            # 버리지 않고 남긴다. 여기서 예외를 내면 연결이 통째로 끊긴다
             self._writer.write("_control", "raw", rx_ns, frame)
             return
         
