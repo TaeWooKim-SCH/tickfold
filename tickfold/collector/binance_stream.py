@@ -13,9 +13,9 @@ import time
 from pathlib import Path
 
 import aiohttp
-import websockets
 
 from tickfold.collector.binance_rest import BinanceBanned, BinanceRestError, fetch_snapshot
+from tickfold.collector.connection import connect_forever
 from tickfold.collector.orderbook import OrderBook
 from tickfold.collector.writer import RawWriter, last_stored_line
 
@@ -39,10 +39,7 @@ REFRESH_MIN_INTERVAL_S = 30.0  # 가격이 출렁일 때 연달아 받아 가중
 SNAPSHOT_MAX_AGE_S = 600.0  # 마지막 스냅샷이 이보다 오래되면 범위와 무관하게 다시 받는다
 SNAPSHOT_AGE_CHECK_S = 10.0
 
-# 연결루프용
 FLUSH_S = 5.0
-BACKOFF_S = 1.0
-CLOSE_TIMEOUT_S = 1.0  # 닫는 인사를 오래 기다리지 않는다. 기다리는 동안은 아무것도 못 받아 그대로 갭이 된다
 
 def stream_names(symbols) -> str:
     """combined stream URL의 streams 파라미터. 종목 × 스트림 전부를 한 연결로 받는다."""
@@ -198,27 +195,6 @@ class StreamHandler:
             # 플래그를 풀면 다음 델타가 재시도를 띄운다
             self._resyncing.discard(symbol)
 
-async def _pump(ws, handler: StreamHandler) -> None:
-    while True:
-        frame = await ws.recv(decode=False)  # 바이트로 받아야 재직렬화가 없다
-        handler.handle(frame, time.time_ns())  # 받은 직후에 찍어야 수신 시각이 맞다
-
-async def _connect_forever(handler: StreamHandler, url: str) -> None:
-    attempt = 0
-    while True:
-        try:
-            async with websockets.connect(url, close_timeout=CLOSE_TIMEOUT_S) as ws:
-                log.info("연결됨")
-                attempt = 0  # 연결이 서면 백오프를 되돌린다
-                await _pump(ws, handler)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            wait = min(BACKOFF_S * 2**attempt, MAX_BACKOFF_S)
-            attempt += 1
-            log.warning("연결 끊김 (%s). %.0f초 후 재연결", exc, wait)
-            await asyncio.sleep(wait)
-
 async def _flush_forever(writer: RawWriter) -> None:
     while True:
         await asyncio.sleep(FLUSH_S)
@@ -239,7 +215,7 @@ async def run(symbols, root, ws_base: str = WS_BASE) -> None:
         flusher = asyncio.create_task(_flush_forever(writer))
         refresher = asyncio.create_task(_refresh_forever(handler))
         try:
-            await _connect_forever(handler, ws_base + stream_names(symbols))
+            await connect_forever(handler, ws_base + stream_names(symbols))
         finally:
             flusher.cancel()
             refresher.cancel()
