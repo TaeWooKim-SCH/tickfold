@@ -130,3 +130,14 @@ def test_last_stored_line_reads_the_newest_file_and_skips_a_torn_tail(tmp_path):
 
     assert last_stored_line(tmp_path, "BTCUSDT", "depth") == b'{"rx":3,"m":"b"}'
     assert last_stored_line(tmp_path, "ETHUSDT", "depth") is None
+
+def test_line_with_an_earlier_hour_stays_in_the_open_file(tmp_path):
+    w = RawWriter(tmp_path)
+    w.write("BTCUSDT", "trade", T11, b'{"t":8}')
+    w.write("BTCUSDT", "trade", T11 - 5_000_000, b'{"t":9}')  # 연결을 넘겨받은 직후. 수신 시각이 10시 59분 59초다
+    w.write("BTCUSDT", "trade", T11 + 1, b'{"t":10}')
+    w.flush()
+
+    day = tmp_path / "BTCUSDT" / "2026-09-10"
+    assert [p.name for p in day.iterdir()] == ["11.trade.ndjson"]  # 10시 파일을 다시 열지 않는다
+    assert len((day / "11.trade.ndjson").read_bytes().splitlines()) == 3

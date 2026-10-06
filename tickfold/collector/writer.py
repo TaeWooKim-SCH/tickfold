@@ -6,7 +6,7 @@
     {symbol}/{YYYY-MM-DD}/snapshots.ndjson(.zst)      REST 스냅샷, 하루 단위
  
 줄 형식: {"rx": 수신시각ns, "m": 원본}  — 원본 바이트는 재직렬화 없이 그대로 붙인다.
-시간 경계는 로컬 수신 시각(rx)의 UTC 기준이다.
+시간 경계는 로컬 수신 시각(rx)의 UTC 기준이다. 수신 시각이 앞 시간대로 돌아간 줄은 열려 있는 파일에 이어 쓴다.
 """
 
 import os
@@ -65,7 +65,9 @@ class RawWriter:
 
     def _ensure(self, key: tuple[str, str], period: tuple, path: Path) -> IO[bytes]:
         cur = self._files.get(key)
-        if (cur is not None and cur.period == period):
+        if (cur is not None and period <= cur.period):
+            # 같은 시간대이거나 앞 시간대다. 연결을 넘겨받은 직후의 프레임은 수신 시각이 조금 과거일 수 있는데,
+            # 닫은 시간대 파일을 다시 열면 파트 파일 순서가 식별자 순서와 어긋난다
             return cur.fh
         if (cur is not None):
             self._close_and_compress(cur.fh)
