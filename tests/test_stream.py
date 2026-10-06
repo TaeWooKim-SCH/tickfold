@@ -285,3 +285,60 @@ def test_shutdown_notice_is_kept_not_raised(tmp_path):
 
     line = (tmp_path / "_control" / "2026-09-15" / "00.raw.ndjson").read_bytes().splitlines()[0]
     assert line == b'{"rx":%d,"m":' % T + f + b"}"
+
+def test_frames_the_old_connection_stored_are_dropped_after_a_handover(tmp_path):
+    w = RawWriter(tmp_path)
+    h = StreamHandler(None, w, ["BTCUSDT"])
+    h.books["BTCUSDT"].apply_snapshot({"lastUpdateId": 100, "bids": [], "asks": []})
+    stored = [
+        frame("btcusdt@depth@100ms", depth(101, 105)),
+        frame("btcusdt@trade", {"e": "trade", "t": 7}),
+        frame("btcusdt@depth20@100ms", {"lastUpdateId": 105, "bids": [], "asks": []}),
+    ]
+    for f in stored:
+        h.handle(f, T)
+
+    h.begin_handover()
+    for f in stored:
+        h.handle(f, T)  # 새 연결이 같은 것을 준다. 넘겨받은 뒤에 늦게 와도 버린다
+    h.handle(frame("btcusdt@depth@100ms", depth(106, 110)), T)
+    h.handle(frame("btcusdt@trade", {"e": "trade", "t": 8}), T)
+    w.flush()
+
+    day = tmp_path / "BTCUSDT" / "2026-09-15"
+    counts = {s: len((day / f"00.{s}.ndjson").read_bytes().splitlines()) for s in ("depth", "trade", "depth20")}
+    assert counts == {"depth": 2, "trade": 2, "depth20": 1}
+    assert h.duplicates_dropped == 3
+    assert h.gaps == 0
+
+def test_same_frame_twice_is_stored_twice_outside_a_handover(tmp_path, monkeypatch):
+    w = RawWriter(tmp_path)
+    h = StreamHandler(None, w, ["BTCUSDT"])
+    f = frame("btcusdt@trade", {"e": "trade", "t": 7})
+    h.handle(f, T)
+    h.handle(f, T)  # 거래소가 두 번 보냈다면 그것도 기록이다. 평소에는 버리지 않는다
+
+    monkeypatch.setattr(binance_stream, "HANDOVER_S", 0.0)
+    h.begin_handover()  # 넘겨받고 정해진 시간이 지난 뒤도 평소와 같다
+    h.handle(f, T)
+    w.flush()
+
+    assert len((tmp_path / "BTCUSDT" / "2026-09-15" / "00.trade.ndjson").read_bytes().splitlines()) == 3
+    assert h.duplicates_dropped == 0
+
+def test_handing_over_waits_until_every_stacked_stream_overlaps_what_was_stored(tmp_path):
+    h = StreamHandler(None, RawWriter(tmp_path), ["BTCUSDT"])
+    h.books["BTCUSDT"].apply_snapshot({"lastUpdateId": 100, "bids": [], "asks": []})
+    h.handle(frame("btcusdt@depth@100ms", depth(101, 105)), T)
+    h.handle(frame("btcusdt@trade", {"e": "trade", "t": 7}), T)
+    stacked = [  # 새 연결이 쌓아 둔 것. depth 는 옛 연결과 겹치고 체결은 9 부터 받았다
+        (frame("btcusdt@depth@100ms", depth(101, 105)), T),
+        (frame("btcusdt@trade", {"e": "trade", "t": 9}), T),
+    ]
+
+    assert not h.can_hand_over([])  # 새 연결이 아무것도 못 받았으면 넘겨받을 근거가 없다
+    assert not h.can_hand_over(stacked)  # 옛 연결이 체결 8 을 아직 안 줬다. 지금 넘겨받으면 8 이 빠진다
+    h.handle(frame("btcusdt@trade", {"e": "trade", "t": 8}), T)
+    assert not h.can_hand_over(stacked)
+    h.handle(frame("btcusdt@trade", {"e": "trade", "t": 9}), T)
+    assert h.can_hand_over(stacked)  # 스트림마다 같은 프레임을 양쪽이 다 받았다

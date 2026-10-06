@@ -24,7 +24,12 @@ log = logging.getLogger(__name__)
 WS_BASE = "wss://stream.binance.com:9443/stream?streams="
 DEPTH = "depth"
 DEPTH20 = "depth20"
-STREAMS = (f"{DEPTH}@100ms", "trade", f"{DEPTH20}@100ms")  # 호가창에 적용하는 것은 depth 뿐
+TRADE = "trade"
+STREAMS = (f"{DEPTH}@100ms", TRADE, f"{DEPTH20}@100ms")  # 호가창에 적용하는 것은 depth 뿐
+# 스트림마다 늘기만 하는 식별자. 연결을 갈아탈 때 옛 연결이 이미 저장한 프레임을 이걸로 가린다
+FRAME_ID_FIELD = {DEPTH: "u", DEPTH20: "lastUpdateId", TRADE: "t"}
+# 연결을 넘겨받은 뒤 이미 저장한 프레임을 버리는 시간. 연결이 살아서 버틸 수 있는 가장 긴 지연(핑 20초 + 응답 대기 20초)보다 길게 둔다
+HANDOVER_S = 45.0
 
 # 재동기화용
 SNAPSHOT_LIMIT = 5000
@@ -62,6 +67,9 @@ class StreamHandler:
         self._writer = writer
         self.books = {s.upper(): OrderBook() for s in symbols}
         self.gaps = 0
+        self.duplicates_dropped = 0
+        self._last_stored_id: dict[tuple[str, str], int] = {}  # (종목, 스트림) -> 마지막으로 저장한 프레임의 식별자
+        self._handover_until = 0.0  # 이 시각까지만 이미 저장한 프레임을 버린다
         self.tasks: set[asyncio.Task] = set()
         self._resyncing: set[str] = set()
         self._last_seen_u: dict[str, int] = {}
@@ -87,16 +95,23 @@ class StreamHandler:
             return
         
         symbol, stream = split_stream(msg["stream"])
+        data = msg["data"]
+        if (time.monotonic() < self._handover_until and self._already_stored(symbol, stream, data)):
+            self.duplicates_dropped += 1  # 옛 연결이 이미 준 프레임이다
+            return
+        
         self._writer.write(symbol, stream, rx_ns, frame) # 원본 저장이 항상 먼저
+        frame_id = data.get(FRAME_ID_FIELD.get(stream))
+        if (frame_id is not None):
+            self._last_stored_id[(symbol, stream)] = frame_id
 
         book = self.books.get(symbol)
         if (stream == DEPTH20 and book is not None):
-            self._refresh_if_near_edge(symbol, book, msg["data"])
-        
+            self._refresh_if_near_edge(symbol, book, data)
+
         if (stream != DEPTH or book is None):
             return
 
-        data = msg["data"]
         missed = self._count_missed_updates(symbol, data)
         if (missed):
             self.gaps += 1
@@ -105,6 +120,36 @@ class StreamHandler:
         book.apply_delta(data)
         if (not book.synced):
             self._start_resync(symbol)
+
+    def begin_handover(self) -> None:
+        """새 연결로 넘어간다. 지금부터 HANDOVER_S 동안만 이미 저장한 프레임을 버린다.
+
+        평소에는 버리지 않는다. 거래소가 식별자를 뒤로 보내는 날에 원본을 잃지 않으려는 것이다.
+        """
+        self._handover_until = time.monotonic() + HANDOVER_S
+
+    def can_hand_over(self, frames) -> bool:
+        """새 연결이 쌓아 둔 스트림마다, 옛 연결이 이미 저장한 프레임이 하나는 있는가.
+
+        있으면 그 스트림은 새 연결이 받기 시작한 지점까지 옛 연결이 다 준 것이다. 한 스트림 안에서는
+        식별자가 늘기만 하기 때문이다. 그때 넘겨받아야 두 연결 사이에 빈 곳이 없다.
+        스트림마다 따로 보는 것은 한 연결 안에서도 체결이 depth 보다 1초 넘게 늦게 올 때가 있어서다.
+        """
+        overlapped: dict[tuple[str, str], bool] = {}
+        for frame, _ in frames:
+            msg = json.loads(frame)
+            if ("@" not in msg.get("stream", "")):
+                continue
+            symbol, stream = split_stream(msg["stream"])
+            if (stream in FRAME_ID_FIELD):
+                seen = self._already_stored(symbol, stream, msg["data"])
+                overlapped[(symbol, stream)] = overlapped.get((symbol, stream), False) or seen
+        return bool(overlapped) and all(overlapped.values())
+
+    def _already_stored(self, symbol: str, stream: str, data: dict) -> bool:
+        frame_id = data.get(FRAME_ID_FIELD.get(stream))
+        last_stored_id = self._last_stored_id.get((symbol, stream))
+        return frame_id is not None and last_stored_id is not None and frame_id <= last_stored_id
 
     def _count_missed_updates(self, symbol: str, data: dict) -> int:
         """스트림에서 빠진 변경 수. 호가창이 동기화됐는지와 무관하게 순번만 본다."""
