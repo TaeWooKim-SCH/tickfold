@@ -28,6 +28,7 @@ TRADE = "trade"
 STREAMS = (f"{DEPTH}@100ms", TRADE, f"{DEPTH20}@100ms")  # 호가창에 적용하는 것은 depth 뿐
 # 스트림마다 늘기만 하는 식별자. 연결을 갈아탈 때 옛 연결이 이미 저장한 프레임을 이걸로 가린다
 FRAME_ID_FIELD = {DEPTH: "u", DEPTH20: "lastUpdateId", TRADE: "t"}
+SHUTDOWN_NOTICE = "!serverShutdown"  # 거래소가 서버를 내리기 전에 보내는 알림의 스트림 이름
 # 연결을 넘겨받은 뒤 이미 저장한 프레임을 버리는 시간. 연결이 살아서 버틸 수 있는 가장 긴 지연(핑 20초 + 응답 대기 20초)보다 길게 둔다
 HANDOVER_S = 45.0
 
@@ -68,6 +69,7 @@ class StreamHandler:
         self.books = {s.upper(): OrderBook() for s in symbols}
         self.gaps = 0
         self.duplicates_dropped = 0
+        self.shutdown_noticed = False  # 서버 종료 알림을 받았고 아직 갈아타지 않았다
         self._last_stored_id: dict[tuple[str, str], int] = {}  # (종목, 스트림) -> 마지막으로 저장한 프레임의 식별자
         self._handover_until = 0.0  # 이 시각까지만 이미 저장한 프레임을 버린다
         self.tasks: set[asyncio.Task] = set()
@@ -92,6 +94,9 @@ class StreamHandler:
             # 제어·오류 프레임. 스트림 이름이 없거나 "!serverShutdown" 처럼 @ 가 없다.
             # 버리지 않고 남긴다. 여기서 예외를 내면 연결이 통째로 끊긴다
             self._writer.write("_control", "raw", rx_ns, frame)
+            log.warning("제어 프레임: %s", frame[:300].decode(errors="replace"))  # 실물을 본 적이 없다. 오면 눈에 띄어야 한다
+            if (msg.get("stream") == SHUTDOWN_NOTICE):
+                self.shutdown_noticed = True
             return
         
         symbol, stream = split_stream(msg["stream"])
