@@ -5,7 +5,7 @@
 
 ## 스택
 Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
-단계마다 추가: metrics 착수 시 prometheus_client, 복원기 착수 시 pyarrow, 모델 착수 시 torch·scikit-learn(별도 dependency group), 그림 단계에 matplotlib, 시연 화면 착수 시 streamlit(별도 dependency group).
+단계마다 추가: metrics 착수 시 prometheus_client, 복원기 착수 시 pyarrow, 모델 착수 시 torch·scikit-learn(별도 dependency group), 그림 단계에 matplotlib, 시연 화면 착수 시 streamlit·plotly(별도 dependency group).
 
 ## 명령
 - 테스트: `uv run pytest -q`
