@@ -1,11 +1,11 @@
 # Tickfold
 
-비트코인 호가창(LOB) 스트림을 빠짐없이 모으고 품질을 수치로 증명하는 수집기. 12월 국내 저널 투고 논문은 이 수집기의 설계와 구현이고, 활용 예로 깊이 20 vs 10 DeepLOB 실험 하나를 붙인다. 네 축(깊이·수량 정밀도·가격 정밀도·시간 해상도) 축소 실험은 다음 논문으로 미뤘다(2026-10-07).
+비트코인 호가창(LOB) 스트림을 빠짐없이 모으고 품질을 수치로 증명하는 수집기. 12월 국내 저널 투고 논문은 이 수집기의 설계와 구현이고, 활용 예로 깊이 20 vs 10 DeepLOB 실험 하나를 붙인다. 10월 할 일(복원기, 전체 기간 대조, 72시간 판정)이 10월 안에 끝나면 그 실험의 예측으로 모의 매매 손익까지 낸다(2026-10-12, 조건은 계획서 5절). 학술제 시연용으로 호가창 재생 화면을 만든다. 네 축(깊이·수량 정밀도·가격 정밀도·시간 해상도) 축소 실험(2026-10-07)과 체결 모사 시뮬레이터(2026-10-12)는 다음 논문으로 미뤘다.
 살아 있는 계획은 @docs/build-plan-v2.md (v1 저장 포맷·베이스라인 벤치마크는 보류, `docs/build-plan-v1.md`에 보관)
 
 ## 스택
 Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
-단계마다 추가: metrics 착수 시 prometheus_client, 복원기 착수 시 pyarrow, 모델 착수 시 torch·scikit-learn(별도 dependency group), 그림 단계에 matplotlib.
+단계마다 추가: metrics 착수 시 prometheus_client, 복원기 착수 시 pyarrow, 모델 착수 시 torch·scikit-learn(별도 dependency group), 그림 단계에 matplotlib, 시연 화면 착수 시 streamlit(별도 dependency group).
 
 ## 명령
 - 테스트: `uv run pytest -q`
@@ -16,7 +16,7 @@ Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
 ## 구조
 - `tickfold/collector/` 수집기: orderbook.py 순번 검증 · binance_rest.py REST · writer.py 원본 저장 · binance_stream.py combined stream 수집과 갭 재동기화 · connection.py 웹소켓 연결 유지와 12시간마다 갈아타기 · main.py 진입점. 예정: metrics.py
 - `scripts/` 픽스처 캡처 · `tests/` 픽스처 기반 테스트(`fakes.py` 는 aiohttp·websockets 흉내) · `docs/` 계획과 분석 보고서
-- 예정: `tickfold/replay/` 복원기(3절) · `tickfold/reduce/` 축소 변환기(4절) · `tickfold/model/` 라벨·학습(5절) · `experiments/` 실험 하네스(6절)
+- 예정: `tickfold/replay/` 복원기(3절) · `tickfold/reduce/` 축소 변환기(4절) · `tickfold/model/` 라벨·학습(5절) · `experiments/` 실험 하네스(6절). 모의 매매(5절, 조건부)와 학술제 시연 화면(5절)은 착수 때 자리를 정한다
 - `deploy/` 운영: tickfold-collector.service systemd 사용자 유닛. 예정: docker-compose(2절)
 - `data/`는 git 밖. 절대 삭제·수정하지 말 것. 2026-09-27 부터 수집 서비스가 `data/raw` 에 쓰고 있다
 
