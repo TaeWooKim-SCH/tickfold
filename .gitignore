@@ -22,3 +22,5 @@ dist/
 .vscode/
 .idea/
 .DS_Store
+# 발표 자료: 깃허브에 올리지 않는다
+pdf/
