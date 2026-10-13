@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from tickfold.replay.files import read_lines, stream_files
+from tickfold.replay.repeats import first_time_read
 
 LEVELS = 20
 
@@ -56,12 +57,8 @@ def read_depth20_day(day_directory: Path) -> Depth20Frames:
     parts = [parse_depth20(read_lines(path)) for path in paths]
     last_update_id = np.concatenate([part.last_update_id for part in parts])
     # 압축되는 찰나나 크래시 뒤에는 같은 내용이 두 파일로 보인다. 식별자는 늘기만 하므로 앞선 값 이하면 이미 읽은 프레임이다
-    is_new = np.ones(len(last_update_id), dtype=bool)
-    is_new[1:] = last_update_id[1:] > np.maximum.accumulate(last_update_id)[:-1]
-    # 버려도 되는 것은 이미 읽은 프레임뿐이다. 처음 보는 식별자가 뒤로 갔는데 버리면 그 뒤 프레임까지 조용히 사라진다
-    never_read = ~np.isin(last_update_id[~is_new], last_update_id[is_new])
-    if never_read.any():
-        raise ValueError(f"{day_directory}: 식별자가 뒤로 간 depth20 프레임 {never_read.sum()}개는 앞에서 읽은 적이 없다")
+    is_new = first_time_read(last_update_id, day_directory)
+    
     return Depth20Frames(
         last_update_id[is_new],
         np.concatenate([part.received_at for part in parts])[is_new],
