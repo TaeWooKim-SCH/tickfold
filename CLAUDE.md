@@ -12,6 +12,7 @@ Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
 - 수집기 로컬 실행: `uv run --env-file .env python -m tickfold.collector.main`
 - 수집 서비스: `systemctl --user status tickfold-collector` · 로그는 `journalctl --user -u tickfold-collector -f`
 - 재생 화면용 구간 내보내기: `nice -n 19 uv run python scripts/export_replay_segment.py 2026-10-07T07:25:00 2026-10-07T07:40:00 segments/gap-0732.npz` (시각은 UTC 거래소 시각. `segments/` 는 git 밖)
+- 화면용 패키지 설치: `uv sync --group screen --inexact` (수집 서비스가 같은 `.venv` 를 쓰므로 `--inexact` 로 더하기만 한다)
 - 운영 스택: `docker compose -f deploy/docker-compose.yml up -d` (2절 착수 후)
 
 ## 구조

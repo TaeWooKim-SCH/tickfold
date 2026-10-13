@@ -16,6 +16,10 @@ dev = [
     "pytest",
     "pytest-asyncio>=1.4.0",
 ]
+screen = [
+    "streamlit",
+    "plotly",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
