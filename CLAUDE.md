@@ -13,13 +13,15 @@ Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
 - 수집 서비스: `systemctl --user status tickfold-collector` · 로그는 `journalctl --user -u tickfold-collector -f`
 - 재생 화면용 구간 내보내기: `nice -n 19 uv run python scripts/export_replay_segment.py 2026-10-07T07:25:00 2026-10-07T07:40:00 segments/gap-0732.npz` (시각은 UTC 거래소 시각. `segments/` 는 git 밖)
 - 화면용 패키지 설치: `uv sync --group screen --inexact` (수집 서비스가 같은 `.venv` 를 쓰므로 `--inexact` 로 더하기만 한다)
+- 재생 화면: `nice -n 19 uv run --group screen streamlit run tickfold/screen/app.py` (구간 폴더는 `TICKFOLD_SEGMENTS`, 기본 `segments`. 127.0.0.1 로만 받는다. 서버 밖에서는 SSH 터널로 8501 포트)
 - 운영 스택: `docker compose -f deploy/docker-compose.yml up -d` (2절 착수 후)
 
 ## 구조
 - `tickfold/collector/` 수집기: orderbook.py 순번 검증 · binance_rest.py REST · writer.py 원본 저장 · binance_stream.py combined stream 수집과 갭 재동기화 · connection.py 웹소켓 연결 유지와 12시간마다 갈아타기 · main.py 진입점. 예정: metrics.py
 - `scripts/` 픽스처 캡처 · 재생 화면용 구간 내보내기(export_replay_segment.py) · `tests/` 픽스처 기반 테스트(`fakes.py` 는 aiohttp·websockets 흉내) · `docs/` 계획과 분석 보고서
 - `tickfold/replay/` 복원기(3절): files.py 저장 파일을 쓰인 순서로 찾아 읽기 · repeats.py 두 파일에 겹쳐 나온 프레임 가려내기 · depth20.py 거래소가 준 상위 20레벨 프레임을 배열로 읽기 · depth_sequence.py depth 순번과 거래소 시각 읽기, 순번 사슬에서 갭 찾기, depth20 프레임에 거래소 시각 붙이기 · segment.py 화면용 구간 하나를 거래소 시각으로 잘라 npz 로 쓰고 읽기. 예정: 재생, 상위 레벨 배열, 대조
-- 예정: `tickfold/reduce/` 축소 변환기(4절) · `tickfold/model/` 라벨·학습(5절) · `experiments/` 실험 하네스(6절). 모의 매매(5절, 조건부)와 학술제 시연 화면(5절)은 착수 때 자리를 정한다
+- `tickfold/screen/` 학술제 시연 화면(5절): figures.py plotly 그림(한 프레임의 호가창, 구간 전체의 mid)과 숫자 띠 값 · app.py 구간 파일을 골라 보이는 Streamlit 화면. 구간 파일만 읽고 `data/raw` 에는 붙지 않는다. `.streamlit/config.toml` 은 화면이 127.0.0.1 로만 받게 하는 설정. 예정: 재생, 사건 바로가기
+- 예정: `tickfold/reduce/` 축소 변환기(4절) · `tickfold/model/` 라벨·학습(5절) · `experiments/` 실험 하네스(6절). 모의 매매(5절, 조건부)는 착수 때 자리를 정한다
 - `deploy/` 운영: tickfold-collector.service systemd 사용자 유닛. 예정: docker-compose(2절)
 - `data/`는 git 밖. 절대 삭제·수정하지 말 것. 2026-09-27 부터 수집 서비스가 `data/raw` 에 쓰고 있다
 

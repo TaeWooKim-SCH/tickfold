@@ -1,0 +1,9 @@
+# 화면은 SSH 터널로만 본다. 그냥 두면 Streamlit 이 모든 네트워크 인터페이스에서 받는다
+[server]
+address = "127.0.0.1"
+# 서버에 브라우저가 없다. 꺼 두지 않으면 처음 띄울 때 이메일을 묻고 멈춘다
+headless = true
+
+# 발표장에 인터넷이 없으면 사용 통계 요청이 실패해 브라우저 콘솔에 에러로 남는다
+[browser]
+gatherUsageStats = false
