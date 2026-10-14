@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -11,9 +11,18 @@ pytest.importorskip("plotly")
 
 from test_replay_segment import exchange_time_of, fixture_lines, write_day
 
-from tickfold.replay.depth20 import ASK, BID, QUANTITY
+from tickfold.replay.depth20 import ASK, BID, PRICE, QUANTITY
 from tickfold.replay.segment import ReplaySegment, read_segment
-from tickfold.screen.figures import SegmentSummary, book_figure, find_quantity_ceiling, mid_figure, summarize
+from tickfold.screen.figures import (
+    MID_LINE_POINTS,
+    SegmentSummary,
+    book_figure,
+    find_quantity_ceiling,
+    mid_figure,
+    summarize,
+    thin_mid_line,
+    utc_text,
+)
 
 
 def read_with_a_gap(symbol_directory: Path, first: int, last: int) -> tuple[ReplaySegment, list[bytes]]:
@@ -85,15 +94,17 @@ def test_bar_longer_than_the_ceiling_is_cut_while_its_text_keeps_the_quantity(tm
     assert tuple(figure.layout.xaxis.range) == (0, ceiling)
 
 
-def test_mid_figure_shades_the_gap_breaks_the_line_there_and_marks_the_chosen_frame(tmp_path):
+def test_mid_figure_shades_the_gap_breaks_the_line_there_and_marks_the_playback_clock(tmp_path):
     segment, depth = read_with_a_gap(tmp_path, 50, 400)
-    frame = 200
+    # 재생 시계가 갭 안에 있을 때다. 어느 프레임의 시각도 아니다
+    clock = exchange_time_of(depth[99]) + timedelta(milliseconds=150)
 
-    figure = mid_figure(segment, frame)
+    figure = mid_figure(thin_mid_line(segment), int(clock.timestamp() * 1000))
 
     (line,) = figure.data
-    gap, chosen = figure.layout.shapes
+    gap, marker = figure.layout.shapes
     drawn = ~np.isnan(line.y)
+    # 프레임이 MID_LINE_POINTS 보다 적은 구간이라 솎지 않고 전부 그린다
     best_prices = [(float(raw["bids"][0][0]), float(raw["asks"][0][0])) for raw in raw_depth20(segment)]
     assert line.y[drawn].tolist() == [(best_bid + best_ask) / 2 for best_bid, best_ask in best_prices]
     # 시간 축은 거래소 시각이고 UTC 다. 이 서버의 시간대(KST)로 바뀌어 나오면 여기서 걸린다
@@ -103,7 +114,46 @@ def test_mid_figure_shades_the_gap_breaks_the_line_there_and_marks_the_chosen_fr
     (line_break,) = np.flatnonzero(~drawn).tolist()
     assert (line.x[line_break - 1], line.x[line_break + 1]) == (before_the_gap, after_the_gap)
     assert (gap.type, gap.x0, gap.x1) == ("rect", before_the_gap, after_the_gap)
-    assert (chosen.type, chosen.x0, chosen.x1) == ("line", line.x[drawn][frame], line.x[drawn][frame])
+    assert (marker.type, marker.x0, marker.x1) == ("line", on_the_time_axis(clock), on_the_time_axis(clock))
+    assert gap.x0 < marker.x0 < gap.x1
+
+
+def test_thinned_mid_line_keeps_the_lowest_and_highest_of_every_bunch_and_breaks_only_at_the_gap():
+    # 끝 묶음이 덜 차는 길이다. mid 가 계속 오르므로 묶음의 가장 낮은 점과 높은 점은 그 묶음의 첫 프레임과 끝 프레임이다
+    frames, before_the_gap = 8_995, 4_504
+    mid = 80_000 + np.arange(frames) * 0.5
+    # 몇 번째마다 하나씩 뽑으면 사라지는 한 프레임짜리 급등과 급락
+    mid[1_234] += 700
+    mid[5_678] -= 700
+    # 구간의 첫 프레임과 끝 프레임이 제 묶음에서 가장 낮지도 높지도 않게 한다
+    mid[0], mid[-1] = mid[2], mid[-3]
+    # 값이 전부 같은 묶음은 가장 낮은 점과 높은 점이 같은 프레임이다. 두 번 남기면 보내는 점만 는다
+    mid[18:27] = mid[18]
+    exchange_time = 1_791_358_000_014 + np.arange(frames) * 100
+    exchange_time[before_the_gap + 1 :] += 24_800
+    book = np.zeros((frames, 2, 20, 2))
+    book[:, BID, 0, PRICE], book[:, ASK, 0, PRICE] = mid - 0.25, mid + 0.25
+    nothing = np.array([], dtype=np.int64)
+    gap_edges = exchange_time[[before_the_gap]], exchange_time[[before_the_gap + 1]]
+    segment = ReplaySegment(exchange_time, nothing, nothing, book, *gap_edges, np.array([5]))
+
+    line = thin_mid_line(segment)
+
+    times = utc_text(exchange_time).tolist()
+    drawn = ~np.isnan(line.mid)
+    # 갭 양쪽 프레임과 구간의 첫·끝 프레임은 가장 낮지도 높지도 않다. 그래도 남아야 선이 갭에서만 끊기고 구간을 다 덮는다
+    assert drawn.sum() <= MID_LINE_POINTS + 4
+    kept = dict(zip(line.time[drawn].tolist(), line.mid[drawn].tolist()))
+    assert len(kept) == drawn.sum()
+    assert kept.items() <= dict(zip(times, mid.tolist())).items()
+    bunch = -(-frames // (MID_LINE_POINTS // 2))
+    for first in range(0, frames, bunch):
+        kept_here = {kept[time] for time in times[first : first + bunch] if time in kept}
+        assert {mid[first : first + bunch].min(), mid[first : first + bunch].max()} <= kept_here, first
+    (line_break,) = np.flatnonzero(~drawn).tolist()
+    around_the_break = line.time[line_break - 1], line.time[line_break + 1]
+    assert around_the_break == (times[before_the_gap], times[before_the_gap + 1])
+    assert (line.time[0], line.time[-1]) == (times[0], times[-1])
 
 
 def test_gap_reaching_outside_the_segment_is_shaded_only_up_to_the_edge_frame(tmp_path):
@@ -111,7 +161,7 @@ def test_gap_reaching_outside_the_segment_is_shaded_only_up_to_the_edge_frame(tm
     segment, depth = read_with_a_gap(tmp_path, 101, 400)
     assert segment.gap_last_exchange_time[0] < segment.exchange_time[0]
 
-    figure = mid_figure(segment, 0)
+    figure = mid_figure(thin_mid_line(segment), int(segment.exchange_time[0]))
 
     first_frame = on_the_time_axis(exchange_time_of(depth[103]))
     gap = figure.layout.shapes[0]
@@ -120,7 +170,7 @@ def test_gap_reaching_outside_the_segment_is_shaded_only_up_to_the_edge_frame(tm
 
     # 갭 안에서 끝나는 구간은 갭 직후 프레임이 구간 밖에 있다
     segment, _ = read_with_a_gap(tmp_path, 50, 102)
-    figure = mid_figure(segment, 0)
+    figure = mid_figure(thin_mid_line(segment), int(segment.exchange_time[0]))
     last_frame = on_the_time_axis(exchange_time_of(depth[99]))
     assert (figure.layout.shapes[0].x0, figure.layout.shapes[0].x1) == (last_frame, last_frame)
     assert max(figure.data[0].x) == last_frame

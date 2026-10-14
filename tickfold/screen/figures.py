@@ -16,6 +16,8 @@ GAP_EDGE_COLOR, GAP_FILL_COLOR = "#898781", "rgba(137, 135, 129, 0.35)"
 QUANTITY_CEILING_PERCENTILE = 99
 # 막대 40개에 글자가 한 줄씩 붙는다. 위아래 여백을 빼고 한 줄에 16픽셀이 돌아가는 높이다
 BOOK_HEIGHT, MID_HEIGHT = 760, 380
+# 재생 중에는 주기마다 mid 그림을 통째로 다시 보낸다. 점 하나에 38바이트가 가서 점 수가 곧 보내는 양이다
+MID_LINE_POINTS = 2000
 MARGIN = dict(l=70, r=20, t=60, b=50)
 SIDE_NAMES = {ASK: "매도", BID: "매수"}
 
@@ -31,6 +33,16 @@ class SegmentSummary:
     gap_seconds: float  # 갭 길이의 합. 구간 밖으로 나간 부분도 센다
     missed_updates: int
     longest_delivery_delay_seconds: float  # 수신 시각 - 거래소 시각 가운데 가장 큰 값
+
+
+@dataclass(frozen=True)
+class MidLine:
+    """mid 그림에서 재생 중에 안 바뀌는 것. 구간마다 한 번 만들어 두고 주기마다 세로선만 옮겨 다시 쓴다."""
+
+    time: np.ndarray  # 선의 거래소 시각, UTC 문자열. 갭 직후 프레임 앞에는 선을 끊는 빈 점이 끼어 있다
+    mid: np.ndarray  # 빈 점은 nan
+    gap_starts: np.ndarray  # 갭을 칠할 띠의 양 끝, UTC 문자열
+    gap_ends: np.ndarray
 
 
 def summarize(segment: ReplaySegment) -> SegmentSummary:
@@ -99,31 +111,50 @@ def book_figure(segment: ReplaySegment, frame: int, quantity_ceiling: float) -> 
     return figure
 
 
-def mid_figure(segment: ReplaySegment, frame: int) -> go.Figure:
-    """구간 전체의 mid 를 거래소 시각 위에 그린다. 갭은 띠로 칠하고 고른 프레임에는 세로선을 긋는다."""
+def thin_mid_line(segment: ReplaySegment) -> MidLine:
+    """구간 전체의 mid 선을 MID_LINE_POINTS 개 안팎으로 솎고 갭에서 끊는다. 갭을 칠할 띠도 같이 잡는다."""
     exchange_time = segment.exchange_time
     mid = (segment.book[:, BID, 0, PRICE] + segment.book[:, ASK, 0, PRICE]) / 2
     # 갭 안에서 자른 구간은 갭이 첫·끝 프레임 밖으로 나가 있다. 그대로 칠하면 시간 축이 프레임 없는 데까지 늘어난다
     gap_starts = utc_text(np.clip(segment.gap_last_exchange_time, exchange_time[0], exchange_time[-1]))
     gap_ends = utc_text(np.clip(segment.gap_next_exchange_time, exchange_time[0], exchange_time[-1]))
-    # 갭을 건너 선을 이으면 받지 못한 동안의 가격을 아는 것처럼 보인다. 갭 직후 프레임 앞에 빈 점을 끼워 선을 끊는다
     after_gap = np.searchsorted(exchange_time, segment.gap_next_exchange_time)
+    kept = np.arange(len(mid))
+    if len(mid) > MID_LINE_POINTS:
+        # 몇 번째마다 하나씩 뽑으면 한두 프레임짜리 급등락이 사라진다. 묶음마다 가장 낮은 점과 가장 높은 점을 남긴다
+        bunch = -(-len(mid) // (MID_LINE_POINTS // 2))
+        # 끝 묶음의 빈 자리는 끝 값으로 채운다. argmin 과 argmax 는 같은 값 가운데 앞의 것을 골라서 채운 자리는 안 뽑힌다
+        bunches = np.pad(mid, (0, -len(mid) % bunch), mode="edge").reshape(-1, bunch)
+        first_of_bunch = np.arange(len(bunches)) * bunch
+        # 갭 양쪽 프레임과 구간의 첫·끝 프레임은 안 뽑혀도 남긴다. 빠지면 선이 갭보다 넓게 끊기고 시간 축이 줄어든다
+        edges = np.concatenate([after_gap - 1, after_gap, [0, len(mid) - 1]]).clip(0, len(mid) - 1)
+        lowest, highest = first_of_bunch + bunches.argmin(axis=1), first_of_bunch + bunches.argmax(axis=1)
+        kept = np.unique(np.concatenate([lowest, highest, edges]))
+    # 갭을 건너 선을 이으면 받지 못한 동안의 가격을 아는 것처럼 보인다. 갭 직후 프레임 앞에 빈 점을 끼워 선을 끊는다
+    breaks = np.searchsorted(kept, after_gap)
+    time = np.insert(utc_text(exchange_time[kept]), breaks, gap_ends)
+    return MidLine(time, np.insert(mid[kept], breaks, np.nan), gap_starts, gap_ends)
+
+
+def mid_figure(line: MidLine, clock: int) -> go.Figure:
+    """구간 전체의 mid 를 거래소 시각 위에 그린다. 갭은 띠로 칠하고 재생 시계의 시각에 세로선을 긋는다."""
     figure = go.Figure(
         go.Scatter(
-            x=np.insert(utc_text(exchange_time), after_gap, gap_ends),
-            y=np.insert(mid, after_gap, np.nan),
+            x=line.time,
+            y=line.mid,
             mode="lines",
             line=dict(color=MID_COLOR, width=2),
             hovertemplate="%{x|%H:%M:%S.%L} UTC<br>mid %{y:,.3f}<extra></extra>",
         )
     )
-    for gap_start, gap_end in zip(gap_starts, gap_ends):
+    for gap_start, gap_end in zip(line.gap_starts, line.gap_ends):
         # 테두리가 없으면 한 시간짜리 구간에서 1초 갭은 한 픽셀이 안 돼 안 보인다
         edge = dict(color=GAP_EDGE_COLOR, width=1)
         figure.add_vrect(x0=gap_start, x1=gap_end, fillcolor=GAP_FILL_COLOR, line=edge, layer="below")
-    figure.add_vline(x=utc_text(exchange_time[frame]), line=dict(color=SELECTED_FRAME_COLOR, width=2))
+    # 고른 프레임의 시각이 아니라 재생 시계에 긋는다. 갭을 지나는 동안 호가창은 멈춰 있어도 세로선은 띠 안을 지나간다
+    figure.add_vline(x=utc_text(clock), line=dict(color=SELECTED_FRAME_COLOR, width=2))
     figure.update_layout(
-        title_text="mid · 회색 띠는 갭, 세로선은 고른 프레임",
+        title_text="mid · 회색 띠는 갭, 세로선은 재생 위치",
         xaxis_title_text="거래소 시각 (UTC)",
         yaxis_tickformat=",.2f",
         showlegend=False,
