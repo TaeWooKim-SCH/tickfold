@@ -144,3 +144,17 @@ def test_export_script_refuses_to_write_under_the_raw_folder(tmp_path, monkeypat
     assert len(load_segment(tmp_path / "raw-export" / "a.npz").exchange_time) == 598
     assert not (tmp_path / "raw" / "segments").exists()
     assert not (tmp_path / "raw-export" / "b.npy.npz").exists()
+
+
+    
+def test_export_script_refuses_a_window_longer_than_the_screen_can_take(tmp_path, monkeypatch):
+    script = str(PROJECT / "scripts" / "export_replay_segment.py")
+    # 화면은 구간을 웹소켓 메시지 하나로 받는다. 하루치는 750MB 라 Streamlit 한도 200MB 를 넘는다. 읽기 전에 막는다
+    window = ["2026-09-27T06:00:00", "2026-09-27T08:00:00.001"]
+    output = tmp_path / "a.npz"
+    monkeypatch.setattr(sys, "argv", [script, *window, str(output), "--data-root", str(tmp_path / "raw")])
+
+    with pytest.raises(SystemExit):
+        runpy.run_path(script, run_name="__main__")
+
+    assert not output.exists()

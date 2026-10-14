@@ -1,25 +1,16 @@
-"""재생 화면의 그림과 숫자 띠 값을 만든다. Streamlit 을 모르는 순수 함수라서 화면 없이 시험하고 미리보기 파일로도 쓴다."""
+"""재생 화면의 숫자 띠 값과 그림에 넘길 값을 만든다. Streamlit 을 모르는 순수 함수라서 화면 없이 시험한다."""
 
 from dataclasses import dataclass
 
 import numpy as np
-import plotly.graph_objects as go
 
-from tickfold.replay.depth20 import ASK, BID, LEVELS, PRICE, QUANTITY
+from tickfold.replay.depth20 import ASK, BID, PRICE, QUANTITY
 from tickfold.replay.segment import ReplaySegment
 
-# 매도 파랑, 매수 빨강은 국내 거래소 호가창의 색이다. 초록·빨강 짝은 적록 색각에서 구별이 어려워서 안 쓴다
-ASK_COLOR, BID_COLOR = "#2a78d6", "#e34948"
-MID_COLOR, SELECTED_FRAME_COLOR = "#008300", "#9085e9"
-GAP_EDGE_COLOR, GAP_FILL_COLOR = "#898781", "rgba(137, 135, 129, 0.35)"
 # 가장 큰 주문에 축을 맞추면 나머지 막대가 더 짧아진다. 이 백분위수를 넘는 수량은 막대를 잘라 그린다
 QUANTITY_CEILING_PERCENTILE = 99
-# 막대 40개에 글자가 한 줄씩 붙는다. 위아래 여백을 빼고 한 줄에 16픽셀이 돌아가는 높이다
-BOOK_HEIGHT, MID_HEIGHT = 760, 380
-# 재생 중에는 주기마다 mid 그림을 통째로 다시 보낸다. 점 하나에 38바이트가 가서 점 수가 곧 보내는 양이다
+# mid 선은 구간마다 한 번 브라우저로 간다. 솎지 않으면 한 시간 구간이 3만 5천 점이라 보내는 양과 그리는 시간이 는다
 MID_LINE_POINTS = 2000
-MARGIN = dict(l=70, r=20, t=60, b=50)
-SIDE_NAMES = {ASK: "매도", BID: "매수"}
 
 
 @dataclass(frozen=True)
@@ -37,7 +28,7 @@ class SegmentSummary:
 
 @dataclass(frozen=True)
 class MidLine:
-    """mid 그림에서 재생 중에 안 바뀌는 것. 구간마다 한 번 만들어 두고 주기마다 세로선만 옮겨 다시 쓴다."""
+    """mid 그림에서 재생 중에 안 바뀌는 것. 구간마다 한 번 만들어 브라우저에 넘기고, 재생 중에는 브라우저가 세로선만 옮긴다."""
 
     time: np.ndarray  # 선의 거래소 시각, UTC 문자열. 갭 직후 프레임 앞에는 선을 끊는 빈 점이 끼어 있다
     mid: np.ndarray  # 빈 점은 nan
@@ -71,46 +62,6 @@ def find_quantity_ceiling(segment: ReplaySegment) -> float:
     return float(np.percentile(segment.book[..., QUANTITY], QUANTITY_CEILING_PERCENTILE))
 
 
-def book_figure(segment: ReplaySegment, frame: int, quantity_ceiling: float) -> go.Figure:
-    """한 프레임의 상위 20레벨을 가로 막대로 그린다. 위에서부터 매도 20 … 매도 1, 매수 1 … 매수 20 이다."""
-    book = segment.book[frame]
-    level_names = {side: [f"{name} {level}" for level in range(1, LEVELS + 1)] for side, name in SIDE_NAMES.items()}
-    figure = go.Figure()
-    for side, color in ((ASK, ASK_COLOR), (BID, BID_COLOR)):
-        prices, quantities = book[side, :, PRICE], book[side, :, QUANTITY]
-        figure.add_bar(
-            x=np.minimum(quantities, quantity_ceiling),
-            y=level_names[side],
-            orientation="h",
-            marker_color=color,
-            # 잘린 막대도 글자와 마우스를 올렸을 때의 값은 원래 수량이다
-            text=[f"{price:,.2f}  {quantity:.5f}" for price, quantity in zip(prices, quantities)],
-            hoverinfo="y+text",
-            # 축의 절반을 넘는 막대는 오른쪽에 글자 자리가 모자라서 막대 안에 적는다
-            textposition=np.where(quantities > quantity_ceiling / 2, "inside", "outside"),
-            # 그냥 두면 plotly 가 글자를 막대 굵기에 맞춰 줄여 그린다. 40줄이라 막대가 글자보다 가늘다
-            constraintext="none",
-        )
-    best_bid, best_ask = book[BID, 0, PRICE], book[ASK, 0, PRICE]
-    time = str(utc_text(segment.exchange_time[frame])).replace("T", " ")
-    figure.update_layout(
-        title_text=f"{time} UTC · mid {(best_bid + best_ask) / 2:,.3f} · 스프레드 {best_ask - best_bid:.2f}",
-        xaxis=dict(title_text=f"수량 (막대는 {quantity_ceiling:.2f} 에서 자름)", range=[0, quantity_ceiling]),
-        yaxis=dict(
-            # 범주 축은 아래에서 위로 쌓인다. 맨 아래가 매수 20, 맨 위가 매도 20 이다
-            categoryarray=level_names[BID][::-1] + level_names[ASK],
-            categoryorder="array",
-            # 눈금을 plotly 에 맡기면 한 줄이 14픽셀보다 낮아질 때 레벨 이름을 건너뛰며 적는다
-            tickmode="linear",
-        ),
-        showlegend=False,
-        bargap=0.15,
-        height=BOOK_HEIGHT,
-        margin=MARGIN,
-    )
-    return figure
-
-
 def thin_mid_line(segment: ReplaySegment) -> MidLine:
     """구간 전체의 mid 선을 MID_LINE_POINTS 개 안팎으로 솎고 갭에서 끊는다. 갭을 칠할 띠도 같이 잡는다."""
     exchange_time = segment.exchange_time
@@ -134,31 +85,3 @@ def thin_mid_line(segment: ReplaySegment) -> MidLine:
     breaks = np.searchsorted(kept, after_gap)
     time = np.insert(utc_text(exchange_time[kept]), breaks, gap_ends)
     return MidLine(time, np.insert(mid[kept], breaks, np.nan), gap_starts, gap_ends)
-
-
-def mid_figure(line: MidLine, clock: int) -> go.Figure:
-    """구간 전체의 mid 를 거래소 시각 위에 그린다. 갭은 띠로 칠하고 재생 시계의 시각에 세로선을 긋는다."""
-    figure = go.Figure(
-        go.Scatter(
-            x=line.time,
-            y=line.mid,
-            mode="lines",
-            line=dict(color=MID_COLOR, width=2),
-            hovertemplate="%{x|%H:%M:%S.%L} UTC<br>mid %{y:,.3f}<extra></extra>",
-        )
-    )
-    for gap_start, gap_end in zip(line.gap_starts, line.gap_ends):
-        # 테두리가 없으면 한 시간짜리 구간에서 1초 갭은 한 픽셀이 안 돼 안 보인다
-        edge = dict(color=GAP_EDGE_COLOR, width=1)
-        figure.add_vrect(x0=gap_start, x1=gap_end, fillcolor=GAP_FILL_COLOR, line=edge, layer="below")
-    # 고른 프레임의 시각이 아니라 재생 시계에 긋는다. 갭을 지나는 동안 호가창은 멈춰 있어도 세로선은 띠 안을 지나간다
-    figure.add_vline(x=utc_text(clock), line=dict(color=SELECTED_FRAME_COLOR, width=2))
-    figure.update_layout(
-        title_text="mid · 회색 띠는 갭, 세로선은 재생 위치",
-        xaxis_title_text="거래소 시각 (UTC)",
-        yaxis_tickformat=",.2f",
-        showlegend=False,
-        height=MID_HEIGHT,
-        margin=MARGIN,
-    )
-    return figure

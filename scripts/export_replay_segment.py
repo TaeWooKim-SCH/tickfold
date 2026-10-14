@@ -9,7 +9,7 @@
 
 import argparse
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from tickfold.replay.segment import read_segment, save_segment
@@ -31,6 +31,9 @@ def main() -> None:
     arguments = parser.parse_args()
     if arguments.start >= arguments.end:
         parser.error(f"시작 {arguments.start} 이 끝 {arguments.end} 보다 앞이어야 한다")
+    # 화면은 구간 전체를 웹소켓 메시지 하나로 받는다. 한 시간이 36MB, 하루가 750MB 이고 Streamlit 한도 200MB 를 넘으면 영어 에러만 뜬다
+    if arguments.end - arguments.start > timedelta(hours=2):
+        parser.error("재생 화면용 구간은 2시간 이하로 자른다")
     # numpy 는 .npz 로 안 끝나는 이름에 .npz 를 붙여 쓴다. 그러면 아래 검사와 크기 출력이 실제로 쓰인 파일이 아닌 이름을 본다
     if arguments.output.suffix != ".npz":
         parser.error(f"{arguments.output} 은 .npz 로 끝나야 한다")
