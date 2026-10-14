@@ -2,6 +2,7 @@
 // 화면(DOM)도 실제 시계도 모르는 코드라서 node --test 로 시간을 손으로 돌려 시험한다. now 는 performance.now() 밀리초다
 
 export const SPEEDS = [1, 2, 5, 10, 30];
+const DAY_MILLISECONDS = 86_400_000;
 
 // 기준점에서 실제 시간이 elapsedMilliseconds 만큼 흐른 뒤의 재생 시계(거래소 시각, 밀리초)
 export function clockAfter(anchorClock, elapsedMilliseconds, speed) {
@@ -42,6 +43,25 @@ export function gapNotice(passage) {
     " 호가창은 갭 직전 프레임에 멈춰 있다."
   );
 }
+
+// 시각 입력칸의 "HH:MM:SS"(UTC, 밀리초는 붙여도 된다)를 재생 시계로 바꾼다. 못 바꾸면 problem 에 까닭("format", "outside")을 담는다
+export function clockFromTimeText(text, firstTime, lastTime) {
+  // 제목과 마우스 안내에 보이는 밀리초도 받는다. 그 시각 이하의 마지막 프레임에 서므로 프레임 시각과 같을 필요는 없다
+  const match = /^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/.exec(text.trim());
+  if (match === null) return { problem: "format" };
+  const [hours, minutes, seconds] = match.slice(1, 4).map(Number);
+  if (hours > 23 || minutes > 59 || seconds > 59) return { problem: "format" };
+  const timeOfDay = ((hours * 60 + minutes) * 60 + seconds) * 1000 + Number((match[4] ?? "").padEnd(3, "0"));
+  // 첫 프레임과 같은 초는 구간 안으로 쳐서 07:25:00.014 에서 시작하는 구간에 07:25:00 을 받는다
+  const earliest = firstTime - (firstTime % 1000);
+  // 구간이 UTC 자정을 넘으면 같은 시각이 두 날짜에 있다. 구간 안에 드는 날짜를 고른다
+  for (const day of [firstTime - (firstTime % DAY_MILLISECONDS), lastTime - (lastTime % DAY_MILLISECONDS)]) {
+    const clock = day + timeOfDay;
+    if (earliest <= clock && clock <= lastTime) return { clock: Math.max(clock, firstTime) };
+  }
+  return { problem: "outside" };
+}
+
 
 // 재생 상태. 멈춤과 재생 둘이고, 바꾸는 길은 이 클래스의 메서드뿐이다
 export class Playback {
@@ -97,10 +117,16 @@ export class Playback {
     this.speed = speed;
   }
 
-  // 슬라이더와 처음으로가 자리를 옮긴다. 재생 중이면 옮긴 자리에서 이어 간다
+  // 슬라이더, 시각 입력, 처음으로가 자리를 옮긴다. 재생 중이면 옮긴 자리에서 이어 간다
   moveTo(clock, now) {
     if (this.playing) this.anchor = { clock, moment: now };
     else this.pausedClock = clock;
+  }
+
+  // 갭 바로가기가 자리를 옮긴다. 재생 중이어도 멈춘 채로 간다. 30배로 이어 가면 24.9초 갭을 0.83초에 지나가 거의 안 보인다
+  jumpTo(clock) {
+    this.anchor = null;
+    this.pausedClock = clock;
   }
 
   // 한 프레임 앞(+1)이나 뒤(-1)로 간다. 재생 중이면 그린 자리에 멈춘 뒤에 옮긴다

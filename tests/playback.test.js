@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { Playback, clockAfter, frameAt, gapAt, gapNotice } from "../tickfold/screen/playback.js";
+import { Playback, clockAfter, clockFromTimeText, frameAt, gapAt, gapNotice } from "../tickfold/screen/playback.js";
 
 test("frame follows the exchange time at any speed and stays on the last frame past the end", () => {
   // 프레임 간격이 고르지 않다. 프레임 수를 세어 넘기면 0.45초 뒤에 4번이 아니라 다른 프레임이 나온다
@@ -90,4 +90,43 @@ test("speed and moves while playing carry on from the current place and a frame 
   playback.moveTo(19_900, 9_000);
   playback.step(1, 9_000);
   assert.deepEqual(playback.positionAt(9_000), { frame: 99, clock: 19_900 });
+});
+
+
+test("a gap jump pauses at its place even while playing", () => {
+  const exchangeTimes = Array.from({ length: 100 }, (_, frame) => 10_000 + frame * 100);
+  const playback = new Playback(exchangeTimes);
+  playback.setSpeed(30, 0);
+  playback.toggle(0);
+
+  // 30배로 이어 가면 갭을 눈 깜짝할 새 지나간다. 바로가기는 재생 중이어도 멈춘 채로 간다
+  playback.jumpTo(15_050);
+  assert.equal(playback.playing, false);
+  assert.deepEqual(playback.positionAt(60_000), { frame: 50, clock: 15_050 });
+  playback.toggle(60_000);
+  assert.deepEqual(playback.positionAt(60_010), { frame: 53, clock: 15_350 });
+});
+
+test("time text is read as UTC seconds or milliseconds and refused when malformed or outside the segment", () => {
+  // 2026-10-07 07:25:00.014 ~ 07:39:59.914 UTC, 실제 15분 구간의 첫·끝 프레임이다
+  const [first, last] = [Date.UTC(2026, 9, 7, 7, 25, 0, 14), Date.UTC(2026, 9, 7, 7, 39, 59, 914)];
+
+  assert.deepEqual(clockFromTimeText("07:32:10", first, last), { clock: Date.UTC(2026, 9, 7, 7, 32, 10) });
+  assert.deepEqual(clockFromTimeText(" 7:39:59 ", first, last), { clock: Date.UTC(2026, 9, 7, 7, 39, 59) });
+  // 제목에 보이는 밀리초를 그대로 붙여 넣어도 된다
+  assert.deepEqual(clockFromTimeText("07:32:00.014", first, last), { clock: Date.UTC(2026, 9, 7, 7, 32, 0, 14) });
+  assert.deepEqual(clockFromTimeText("07:32:10.5", first, last), { clock: Date.UTC(2026, 9, 7, 7, 32, 10, 500) });
+  assert.deepEqual(clockFromTimeText("07:39:59.914", first, last), { clock: last });
+  // 첫 프레임과 같은 초는 첫 프레임에 선다. 시작 시각을 초까지만 적어도 받는다
+  assert.deepEqual(clockFromTimeText("07:25:00", first, last), { clock: first });
+  for (const text of ["07:24:59.999", "07:39:59.915", "07:40:00"]) {
+    assert.deepEqual(clockFromTimeText(text, first, last), { problem: "outside" }, text);
+  }
+  for (const text of ["7:32", "07:32:10.5000", "07:32:10.", "24:00:00", "07:60:00", "07:32:60", ""]) {
+    assert.deepEqual(clockFromTimeText(text, first, last), { problem: "format" }, text);
+  }
+  // 자정을 넘는 구간에서는 같은 시각을 구간 안의 날짜로 읽는다
+  const [evening, morning] = [Date.UTC(2026, 9, 7, 23, 50), Date.UTC(2026, 9, 8, 0, 10)];
+  assert.deepEqual(clockFromTimeText("00:05:00", evening, morning), { clock: Date.UTC(2026, 9, 8, 0, 5) });
+  assert.deepEqual(clockFromTimeText("23:55:00", evening, morning), { clock: Date.UTC(2026, 9, 7, 23, 55) });
 });

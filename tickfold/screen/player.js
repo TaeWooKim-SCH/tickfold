@@ -4,6 +4,8 @@
 
 // 재생 중 1초에 다시 그리는 횟수. 화면 주기(초당 60번)마다 그리면 plotly 가 못 따라간다. 브라우저에서 재어 정한다
 const REDRAWS_PER_SECOND = 10;
+// 갭 바로가기는 갭 직전 프레임보다 이만큼 앞에 선다. 재생하면 호가창이 움직이다 멈추는 것부터 보인다
+const GAP_LEAD_MILLISECONDS = 3000;
 const MID_COLOR = "#008300";
 const PLAYBACK_LINE_COLOR = "#9085e9";
 const GAP_EDGE_COLOR = "#898781";
@@ -18,11 +20,12 @@ const PLOT_CONFIG = { responsive: true, displaylogo: false };
 const STYLE = `
 .tickfold-player { font-family: var(--st-font); color: var(--st-text-color); }
 .tickfold-player .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
-.tickfold-player button {
+.tickfold-player button, .tickfold-player input[name=time] {
   font: inherit; color: inherit; background: var(--st-secondary-background-color);
   border: 1px solid var(--st-border-color); border-radius: var(--st-base-radius); padding: 0.25rem 0.75rem;
 }
 .tickfold-player button[aria-pressed=true] { border-color: var(--st-primary-color); color: var(--st-primary-color); }
+.tickfold-player .problem { color: var(--st-red-text-color); }
 .tickfold-player .columns { display: flex; flex-wrap: wrap; gap: 1rem; }
 .tickfold-player .columns > div { flex: 1 1 28rem; min-width: 0; }
 .tickfold-player input[type=range] { width: 100%; }
@@ -40,6 +43,9 @@ const MARKUP = `
   <button data-action="forward">한 프레임 ▶</button>
   <span>배속</span><span class="speeds row"></span>
 </div>
+<form class="row"><label>UTC 시각 <input name="time" placeholder="07:32:10" size="12" autocomplete="off"></label>
+<button>이동</button><span class="problem"></span></form>
+<div class="row gaps"></div>
 <div class="columns">
   <div class="book"></div>
   <div><div class="row"><input type="range" step="1"><span class="frame"></span></div>
@@ -160,6 +166,7 @@ export default function ({ data, parentElement }) {
   slider.max = lastFrame;
   const frameLabel = find(".frame");
   const notice = find(".notice");
+  const problem = find(".problem");
   let shownFrame = null;
   let shownClock = null;
   let timer = null;
@@ -189,6 +196,7 @@ export default function ({ data, parentElement }) {
   };
   // 조작마다 재생 상태를 바꾸고 바로 다시 그린다. 다음 주기까지 기다리면 누른 것이 늦게 보인다
   const act = (change) => () => {
+    problem.textContent = "";
     change(performance.now());
     draw();
   };
@@ -206,6 +214,30 @@ export default function ({ data, parentElement }) {
   find("[data-action=back]").addEventListener("click", act((now) => playback.step(-1, now)));
   find("[data-action=forward]").addEventListener("click", act((now) => playback.step(1, now)));
   slider.addEventListener("input", act((now) => playback.moveTo(exchangeTimes[Number(slider.value)], now)));
+  find(".gaps").append(
+    ...data.gaps.map((gap) => {
+      const seconds = ((gap.nextExchangeTime - gap.lastExchangeTime) / 1000).toFixed(1);
+      const lead = GAP_LEAD_MILLISECONDS / 1000;
+      const label = `갭 ${utcText(gap.lastExchangeTime).slice(11, 19)} (${seconds}초) ${lead}초 전으로`;
+      const button = Object.assign(document.createElement("button"), { textContent: label });
+      const clock = Math.max(gap.lastExchangeTime - GAP_LEAD_MILLISECONDS, exchangeTimes[0]);
+      button.addEventListener("click", act(() => playback.jumpTo(clock)));
+      return button;
+    }),
+  );
+  const [firstSecond, lastSecond] = [0, lastFrame].map((frame) => utcText(exchangeTimes[frame]).slice(11, 19));
+  const problems = {
+    format: "HH:MM:SS 로 적는다(밀리초는 붙여도 된다). 예: 07:32:10",
+    outside: `구간은 ${firstSecond} ~ ${lastSecond} UTC 다`,
+  };
+  find("form").addEventListener("submit", (event) => {
+    // 그냥 두면 폼이 페이지를 다시 불러온다
+    event.preventDefault();
+    const answer = clockFromTimeText(event.target.time.value, exchangeTimes[0], exchangeTimes[lastFrame]);
+    // 구간 밖이나 틀린 형식이면 자리를 안 바꾸고 고칠 점만 보인다
+    if (answer.problem === undefined) act((now) => playback.moveTo(answer.clock, now))();
+    else problem.textContent = problems[answer.problem];
+  });
 
   draw();
   const cleanup = () => {
