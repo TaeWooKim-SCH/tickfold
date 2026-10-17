@@ -13,7 +13,7 @@ import numpy as np
 
 from tickfold.collector.orderbook import OrderBook
 from tickfold.replay.depth_sequence import DepthSequence, find_gaps, parse_depth_sequence
-from tickfold.replay.files import read_lines, stream_files
+from tickfold.replay.files import read_lines, stream_files, stream_files_between
 from tickfold.replay.repeats import first_time_read
 from tickfold.replay.segment import DELIVERY_MARGIN
 
@@ -147,18 +147,7 @@ def _snapshot_heads(day_directory: Path) -> list[tuple[int, int, bytes]]:
 
 def _read_depth(symbol_directory: Path, first: datetime, last: datetime) -> tuple[list[bytes], DepthSequence]:
     """수신 시각이 first 의 시간대부터 last 의 시간대까지인 depth 줄과 그 순번을 쓰인 순서로 읽는다."""
-    first_hour, last_hour = f"{first:%Y-%m-%d %H}", f"{last:%Y-%m-%d %H}"
-    paths = []
-    day = first.date()
-    while day <= last.date():
-        if (symbol_directory / str(day)).is_dir():
-            # 파일 이름의 앞 두 글자가 수신 시각의 시다
-            day_paths = stream_files(symbol_directory / str(day), "depth")
-            paths += [path for path in day_paths if first_hour <= f"{day} {path.name[:2]}" <= last_hour]
-        day += timedelta(days=1)
-    if not paths:
-        raise FileNotFoundError(f"{symbol_directory} 에 {first} ~ {last} 의 depth 파일이 없다")
-    lines_per_file = [read_lines(path) for path in paths]
+    lines_per_file = [read_lines(path) for path in stream_files_between(symbol_directory, "depth", first, last)]
     parts = [parse_depth_sequence(lines) for lines in lines_per_file]
     is_new = first_time_read(np.concatenate([part.final_update_id for part in parts]), symbol_directory)
     sequence = DepthSequence(

@@ -1,6 +1,7 @@
 """저장된 원본 파일을 쓰인 순서대로 찾아 읽는다. 파일 이름 순서가 시간 순서가 아니라서 따로 둔다."""
 
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import zstandard
@@ -25,6 +26,21 @@ def stream_files(day_directory: Path, stream: str) -> list[Path]:
         found.append((name["hour"] or "", part, path))
     return [path for _, _, path in sorted(found)]
 
+def stream_files_between(symbol_directory: Path, stream: str, first: datetime, last: datetime) -> list[Path]:
+    """수신 시각이 first 의 시간대부터 last 의 시간대까지인 한 스트림의 파일을 날짜 폴더를 넘어 쓰인 순서대로 돌려준다."""
+    first_hour, last_hour = f"{first:%Y-%m-%d %H}", f"{last:%Y-%m-%d %H}"
+    paths = []
+    day = first.date()
+    while day <= last.date():
+        if (symbol_directory / str(day)).is_dir():
+            # 파일 이름의 앞 두 글자가 수신 시각의 시다
+            day_paths = stream_files(symbol_directory / str(day), stream)
+            paths += [path for path in day_paths if first_hour <= f"{day} {path.name[:2]}" <= last_hour]
+        day += timedelta(days=1)
+    if not paths:
+        # 빈 목록을 돌려주면 폴더를 잘못 짚은 것이 빈 결과가 되어, 날짜별로 더할 때 그날이 소리 없이 빠진다
+        raise FileNotFoundError(f"{symbol_directory} 에 {first} ~ {last} 의 {stream} 파일이 없다")
+    return paths
 
 def read_lines(path: Path) -> list[bytes]:
     """파일 하나의 온전한 줄을 돌려준다. 쓰는 중이라 덜 쓴 마지막 줄은 버린다."""
