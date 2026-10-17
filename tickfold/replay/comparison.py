@@ -4,6 +4,7 @@
 """
 
 import math
+from collections.abc import Iterator
 from dataclasses import dataclass, fields, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -126,10 +127,19 @@ def compare_depth20(top: TopLevels, valid: ValidColumns, symbol_directory: Path)
 def compare_snapshots(replay: BookReplay) -> SnapshotComparison:
     """replay 를 끝까지 돌리며 범위 안 프레임 앞에 끼운 스냅샷마다 끼우기 직전 호가창과 견준다. replay.steps() 를 여기서 다 쓴다."""
     result = SnapshotComparison(0, 0, _NO_LEVELS, _NO_LEVELS)
+    for _, counts in compare_each_snapshot(replay):
+        result += counts
+    return result
+
+
+def compare_each_snapshot(replay: BookReplay) -> Iterator[tuple[int, SnapshotComparison]]:
+    """compare_snapshots 를 스냅샷마다 (끼운 바로 다음 행, 결과) 로 내준다. 행은 범위 첫 행부터 센다.
+
+    REST 대조는 호가창 전체가 들어서 저장한 배열로 다시 못 낸다. 날짜 중간에서 자르는 창이 이 행으로 스냅샷을 고른다.
+    """
     for step in replay.steps():
         for placed in step.placed:
-            result += _compare_snapshot(placed)
-    return result
+            yield step.row - replay.first_row, _compare_snapshot(placed)
 
 
 def _compare_depth20_file(

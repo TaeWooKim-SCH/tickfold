@@ -1,6 +1,7 @@
 import json
 import re
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -168,7 +169,8 @@ def test_depth20_frames_seen_in_two_files_are_compared_once(tmp_path):
     assert (comparison.whole.points, comparison.unsynced_points, comparison.unpaired_depth20) == (577, 21, 0)
 
 
-def test_two_days_compared_apart_add_up_to_both_days_compared_at_once(tmp_path):
+def store_across_midnight(root) -> tuple[Path, list[bytes]]:
+    """300번 프레임이 28일 자정에 오게 옮긴 저장소와 옮긴 depth 줄. 날마다 depth20 수량 하나와 28일 스냅샷 수량 하나가 다르다."""
     depth, depth20, first = depth_lines(), fixture_depth20_lines(), json.loads(SNAPSHOT)
     # 300번 프레임이 28일 자정에 오게 옮긴다. 두 날짜 모두 여유로 자정 건너편 depth20 파일까지 읽는다
     offset = int(utc_day(28).timestamp() * 1000) - delta(depth[300])["E"]
@@ -187,7 +189,11 @@ def test_two_days_compared_apart_add_up_to_both_days_compared_at_once(tmp_path):
     moved_depth, moved_depth20 = [moved(line, offset) for line in depth], [moved(line, offset) for line in depth20]
     # 27일 마지막 행의 depth20 이 28일 00시 파일로 늦게 왔다. 읽는 범위에 여유가 없으면 27일이 이 짝을 잃는다
     moved_depth20[299] = moved(moved_depth20[299], 1000)
-    symbol_directory = store_with_depth20(tmp_path, moved_depth, moved_depth20, snapshots)
+    return store_with_depth20(root, moved_depth, moved_depth20, snapshots), moved_depth
+
+
+def test_two_days_compared_apart_add_up_to_both_days_compared_at_once(tmp_path):
+    symbol_directory, _ = store_across_midnight(tmp_path)
 
     first_depth20, first_snapshots = compared(symbol_directory, utc_day(27), utc_day(28))
     second_depth20, second_snapshots = compared(symbol_directory, utc_day(28), utc_day(29))
