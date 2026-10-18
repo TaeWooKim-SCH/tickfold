@@ -16,7 +16,7 @@ Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
 - 모델용 패키지 설치: `uv sync --group model --inexact` (torch·scikit-learn. 위와 같은 이유로 `--inexact`)
 - 그림용 패키지 설치: `uv sync --group figures --inexact` (matplotlib. 모의 매매 손익 곡선. 위와 같은 이유로 `--inexact`)
 - 날짜별 복원과 합계: `nice -n 19 ionice -c3 uv run python scripts/restore_days.py restore 2026-09-27 2026-10-16` 뒤 `nice -n 19 ionice -c3 uv run python scripts/restore_days.py summarize` (끝난 UTC 날짜만 받는다. 날짜마다 `restored/BTCUSDT/2026-10-08.npz` 하나, 0.58GB. 넷까지 같이 돌려 20일에 8분. summarize 는 전체 기간과 72시간 판정 창을 찍고, `--window START END` 를 주면 72시간 창 대신 준 창들을 찍는다. `restored/` 는 git 밖)
-- 깊이 20 vs 10 학습: `nice -n 19 ionice -c3 uv run --group model python scripts/train_deeplob.py` (`restored/BTCUSDT` 를 읽어 `runs/deeplob/` 에 깊이·시드마다 result.json·predictions.npz·model.pt, 끝에 summary.json. 평가 구간은 설정을 다 정한 뒤 `--evaluate` 를 준 실행에서만 예측하고 채점한다. 깊이 둘 × 시드 셋 어림 22분. GPU 가 안 잡히면 멈춘다. GPU 학습은 서버에서 한 번에 하나. `runs/` 는 git 밖)
+- 깊이 20 vs 10 학습: `nice -n 19 ionice -c3 uv run --group model python scripts/train_deeplob.py` (`restored/BTCUSDT` 를 읽어 `runs/deeplob/` 에 깊이·시드마다 result.json·predictions.npz·model.pt, 끝에 summary.json. 평가 구간은 설정을 다 정한 뒤 `--evaluate` 를 준 실행에서만 예측하고 채점한다. 깊이 둘 × 시드 셋 25분쯤. GPU 가 안 잡히면 멈춘다. GPU 학습은 서버에서 한 번에 하나. `runs/` 는 git 밖)
 - 재생 화면: `nice -n 19 uv run --group screen streamlit run tickfold/screen/app.py` (구간 폴더는 `TICKFOLD_SEGMENTS`, 기본 `segments`. 127.0.0.1 로만 받는다. 서버 밖에서는 SSH 터널로 8501 포트)
 - 운영 스택: `docker compose -f deploy/docker-compose.yml up -d` (2절 착수 후)
 
