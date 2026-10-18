@@ -23,6 +23,10 @@ class Settings:
     window_rows: int = 100  # 입력 창. 원 논문과 같다
     # 날짜 파일 행 번호가 이 배수인 행만 표본으로 쓴다. 이웃 표본이 창 100행 중 99행을 나누면 한 바퀴 안에 과적합한다
     sample_every: int = 10
+    # 모델 폭은 논문 그림 3·4 의 16/32 와 LSTM 64. 이때 10레벨 파라미터가 논문이 적은 약 60,000 이다
+    conv_filters: int = 16
+    inception_filters: int = 32
+    lstm_units: int = 64
 
     def days(self) -> list[date]:
         """학습 첫 날짜부터 평가 끝 날짜까지. 날짜 파일을 이 차례로 이어 붙인다."""
