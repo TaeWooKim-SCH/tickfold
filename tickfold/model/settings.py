@@ -17,6 +17,12 @@ class Settings:
     evaluation_days: tuple[date, date] = (date(2026, 10, 10), date(2026, 10, 16))
     # 정규화한 입력을 이 표준편차에서 자른다. 스프레드가 벌어진 프레임에서 상대 가격이 1,700 표준편차까지 튄다
     input_clip: float = 10.0
+    # 라벨은 식 3 이다. 거래소 시각 t 뒤 horizon 안(t < E ≤ t + horizon) 프레임 mid 평균이 지금 mid 에서 얼마나 떨어졌나
+    horizon_milliseconds: int = 30_000
+    stationary_quantile: float = 1 / 3  # 보합 폭 α 는 학습 표본 |l| 의 이 분위수. 세 클래스가 비슷해진다
+    window_rows: int = 100  # 입력 창. 원 논문과 같다
+    # 날짜 파일 행 번호가 이 배수인 행만 표본으로 쓴다. 이웃 표본이 창 100행 중 99행을 나누면 한 바퀴 안에 과적합한다
+    sample_every: int = 10
 
     def days(self) -> list[date]:
         """학습 첫 날짜부터 평가 끝 날짜까지. 날짜 파일을 이 차례로 이어 붙인다."""
