@@ -16,6 +16,10 @@ dev = [
     "pytest",
     "pytest-asyncio>=1.4.0",
 ]
+model = [
+    "scikit-learn>=1.9.1",
+    "torch>=2.14.1",
+]
 screen = [
     "streamlit",
     "plotly",
