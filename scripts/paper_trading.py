@@ -15,6 +15,7 @@
 
 import argparse
 import json
+import sys
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -124,6 +125,8 @@ def draw(market: Market, trades: Trades, title: str, path: Path) -> None:
 
 
 def main() -> None:
+    # tee 로 넘기면 출력이 블록 단위로 모여 평가 구간 결과가 실행이 끝날 때까지 안 보인다. 줄마다 내보낸다
+    sys.stdout.reconfigure(line_buffering=True)
     parser = argparse.ArgumentParser(description="예측으로 모의 매매를 돌려 손익과 기준선을 찍는다")
     parser.add_argument("--days-directory", type=Path, default=Path("restored/BTCUSDT"), help="날짜별 복원 .npz 폴더")
     source = parser.add_mutually_exclusive_group(required=True)
