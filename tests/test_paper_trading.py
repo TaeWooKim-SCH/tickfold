@@ -1,3 +1,7 @@
+import json
+import runpy
+import sys
+
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -9,11 +13,13 @@ from test_replay_comparison import store_across_midnight
 from tickfold.paper_trading.baselines import always_hold, imbalance_signals, random_trades
 from tickfold.paper_trading.market import Market, load_market
 from tickfold.paper_trading.performance import max_drawdown, measure
+from tickfold.paper_trading.predictions import Predictions, load_predictions, signals_of
 from tickfold.paper_trading.walk import HORIZON, OPPOSITE, RANGE_END, UNTRADABLE, Trades, TradingRule, walk
 from tickfold.replay.depth20 import ASK, BID, PRICE, QUANTITY
 from tickfold.replay.restored_day import load_restored_day, restore_day, save_restored_day
 
 BUY, SELL = 1, -1
+SCRIPT = str(Path(__file__).parent.parent / "scripts" / "paper_trading.py")
 
 
 def market(rows: int, times=None, untradable=(), resumed=()) -> Market:
@@ -149,6 +155,50 @@ def test_market_joins_saved_days_in_row_order_and_keeps_only_the_best_level_of_r
     with pytest.raises(FileNotFoundError):
         load_market(days_directory, date(2026, 9, 27), date(2026, 9, 29))
 
+def test_predictions_point_at_rows_by_day_and_row_and_the_larger_side_wins_when_both_pass_the_threshold(tmp_path):
+    two_days = replace(market(10), days=np.array(["2026-10-10", "2026-10-11"], dtype="datetime64[D]"),
+                       day_first_rows=np.array([0, 5, 10]))
+    # 내림·보합·오름 차례. 10-12 는 시장에 없는 날짜라 빠진다
+    probabilities = np.array([[0.1, 0.2, 0.7], [0.45, 0.1, 0.45], [0.5, 0.1, 0.4], [0.9, 0.05, 0.05]])
+    # 모델 갈래 write_run 이 쓰는 칸 그대로. 날짜는 문자열 목록과 시점마다 그 차례 번호로 들어 있다
+    np.savez(tmp_path / "predictions.npz", days=np.array(["2026-10-10", "2026-10-11", "2026-10-12"]),
+             day_index=np.array([1, 0, 0, 2]), day_row=np.array([1, 3, 4, 0], dtype=np.int32),
+             probabilities=probabilities)
+    predictions = load_predictions(tmp_path / "predictions.npz")
+
+    rows, sides = signals_of(two_days, predictions, 0.4)
+
+    # 10-10 의 3행은 오름과 내림이 같아 신호가 없다. 10-11 의 1행은 이어 붙인 6행이다
+    assert (rows.tolist(), sides.tolist()) == ([4, 6], [SELL, BUY])
+    assert [values.tolist() for values in signals_of(two_days, predictions, 0.6)] == [[6], [BUY]]
+    with pytest.raises(ValueError, match="행 수"):
+        signals_of(two_days, replace(predictions, row=np.array([1, 3, 5, 0])), 0.4)
+    # 날짜가 하나도 안 맞으면 문턱마다 거래 0건으로 조용히 끝나지 않고 멈춘다
+    with pytest.raises(ValueError, match="예측이 없다"):
+        signals_of(replace(two_days, days=np.array(["2026-10-13", "2026-10-14"], dtype="datetime64[D]")),
+                   predictions, 0.4)
+
+
+def test_threshold_choice_takes_the_best_gross_bp_per_trade_among_thresholds_with_enough_validation_trades():
+    pytest.importorskip("matplotlib")
+    choose_threshold = runpy.run_path(SCRIPT)["choose_threshold"]
+    rising = market(50)
+    # 앞 25행은 행마다 1 씩, 뒤 25행은 0.1 씩 오른다. 사자는 앞쪽에서 거래당 2.99, 뒤쪽에서 0.29 를 번다
+    ask = np.concatenate([100 + np.arange(25.0), 124 + 0.1 * np.arange(1, 26)])
+    rising.best[:, ASK, PRICE], rising.best[:, BID, PRICE] = ask, ask - 0.01
+    rows = np.arange(50)
+    up = np.where(rows < 20, 0.7, np.where((rows >= 25) & (rows < 45), 0.5, 0.34))
+    predictions = Predictions(rising.days.repeat(50), rows, np.stack([(1 - up) / 2, (1 - up) / 2, up], axis=1))
+    rule = TradingRule(horizon_milliseconds=300)
+
+    # 문턱 0.4 는 열 건으로 총손익이 더 크고, 0.6 은 앞쪽 다섯 건만이라 거래당 값이 크다
+    assert choose_threshold(rising, predictions, rule, [0.4, 0.6], minimum_trades=1) == 0.6
+    # 거래가 하한보다 적은 문턱은 견주지 않는다
+    assert choose_threshold(rising, predictions, rule, [0.4, 0.6], minimum_trades=6) == 0.4
+    with pytest.raises(ValueError, match="11건 이상 난 문턱이 없다"):
+        choose_threshold(rising, predictions, rule, [0.4, 0.6], minimum_trades=11)
+
+
 
 def test_random_baseline_reaches_the_target_trade_count_and_repeats_with_the_same_seed():
     candidates = np.arange(0, 2000, 10)
@@ -173,3 +223,36 @@ def test_always_hold_keeps_its_position_through_a_gap_and_imbalance_signals_come
     assert (rows.tolist(), sides.tolist()) == ([2, 6], [BUY, SELL])
     assert columns(hold) == [(BUY, 0, 9, RANGE_END)]
     assert (hold.entry_price[0], hold.exit_price[0]) == (100.0, 108.99)
+
+@pytest.mark.parametrize("source", ["random", "model"])
+def test_script_runs_random_or_model_predictions_over_saved_days_and_writes_the_figure(
+    source, tmp_path, monkeypatch, capsys
+):
+    pytest.importorskip("matplotlib")
+    days_directory = saved_fixture_days(tmp_path)
+    days = ["2026-09-27", "2026-09-28"]
+    if source == "random":
+        chosen = ["--random-predictions", "0", "--validation", days[0], days[0], "--evaluation", days[1], days[1]]
+    else:
+        # 모델 갈래 write_run 이 쓰는 predictions.npz 와 result.json. 분할과 horizon 은 result.json 에서 온다
+        lengths = [len(load_restored_day(days_directory / f"{day}.npz").top.exchange_time) for day in days]
+        run = tmp_path / "depth20-seed0"
+        run.mkdir()
+        np.savez(run / "predictions.npz", days=np.array(days), day_index=np.repeat([0, 1], lengths),
+                 day_row=np.concatenate([np.arange(length) for length in lengths]),
+                 probabilities=np.random.default_rng(0).dirichlet(np.ones(3), sum(lengths)).astype(np.float32))
+        settings = {"validation_days": [days[0]] * 2, "evaluation_days": [days[1]] * 2,
+                    "horizon_milliseconds": 10_000}
+        (run / "result.json").write_text(json.dumps({"settings": settings}))
+        chosen = ["--predictions", str(run / "predictions.npz")]
+    monkeypatch.setattr(sys, "argv", [SCRIPT, "--days-directory", str(days_directory), *chosen,
+                                      "--random-draws", "3", "--minimum-trades", "1",
+                                      "--figure", str(tmp_path / "paper_trading.png")])
+
+    runpy.run_path(SCRIPT, run_name="__main__")
+
+    printed = capsys.readouterr().out
+    horizon = "horizon 30초" if source == "random" else "horizon 10초"
+    for expected in ("검증 문턱 0.40", horizon, "모델, 5행 뒤 체결", "항상 보유", "수량 불균형 0.8 규칙", "무작위 3번"):
+        assert expected in printed
+    assert (tmp_path / "paper_trading.png").stat().st_size > 0
