@@ -32,6 +32,8 @@ class Settings:
     learning_rate: float = 1e-3
     patience: int = 3  # 검증 손실이 가장 낮던 epoch 뒤로 이만큼 더 안 줄면 멈춘다
     max_epochs: int = 30
+    depths: tuple[int, ...] = (20, 10)
+    seeds: tuple[int, ...] = (0, 1, 2)  # 결과 표에는 시드 셋의 평균과 표준편차를 싣는다
 
     def days(self) -> list[date]:
         """학습 첫 날짜부터 평가 끝 날짜까지. 날짜 파일을 이 차례로 이어 붙인다."""
