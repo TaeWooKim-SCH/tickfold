@@ -13,9 +13,8 @@ import numpy as np
 
 from tickfold.replay.book_replay import BookReplay, PlacedSnapshot
 from tickfold.replay.depth20 import ASK, BID, LEVELS, PRICE, QUANTITY, Depth20Frames, parse_depth20
-from tickfold.replay.files import read_lines, stream_files_between
+from tickfold.replay.files import DELIVERY_MARGIN, read_lines, stream_files_between
 from tickfold.replay.repeats import first_time_read
-from tickfold.replay.segment import DELIVERY_MARGIN
 from tickfold.replay.top_levels import TopLevels
 from tickfold.replay.valid_mask import ValidColumns
 

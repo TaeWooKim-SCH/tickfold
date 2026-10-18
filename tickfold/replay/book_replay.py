@@ -13,9 +13,8 @@ import numpy as np
 
 from tickfold.collector.orderbook import OrderBook
 from tickfold.replay.depth_sequence import DepthSequence, find_gaps, parse_depth_sequence
-from tickfold.replay.files import read_lines, stream_files, stream_files_between
+from tickfold.replay.files import DELIVERY_MARGIN, read_lines, stream_files, stream_files_between
 from tickfold.replay.repeats import first_time_read
-from tickfold.replay.segment import DELIVERY_MARGIN
 
 # 스냅샷 한 줄은 5,000 + 5,000레벨이라 30만 바이트쯤이다. 자리를 정할 때는 머리만 읽고 json 은 끼울 때 푼다
 _SNAPSHOT_HEAD = re.compile(rb'\{"rx":(\d+),"m":\{"lastUpdateId":(\d+),')

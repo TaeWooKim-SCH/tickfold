@@ -8,11 +8,7 @@ import numpy as np
 
 from tickfold.replay.depth20 import read_depth20_day
 from tickfold.replay.depth_sequence import DepthSequence, exchange_time_at, find_gaps, read_depth_sequence_day
-
-# 폴더는 수신 시각의 날짜로 나뉘고 구간은 거래소 시각으로 자른다. 전달이 밀리면 프레임이 다음 날 폴더에 들어간다.
-# 연결은 핑 20초와 응답 대기 20초보다 오래 밀린 채로는 못 버티므로 60초면 넉넉하다.
-# 앞쪽으로도 같은 여유를 두는 것은 우리 시계가 거래소보다 늦을 때 수신 시각이 거래소 시각보다 앞서 찍히기 때문이다
-DELIVERY_MARGIN = timedelta(seconds=60)
+from tickfold.replay.files import DELIVERY_MARGIN
 
 
 @dataclass(frozen=True)

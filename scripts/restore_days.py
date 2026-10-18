@@ -18,8 +18,8 @@ from itertools import repeat
 from pathlib import Path
 from time import monotonic
 
+from tickfold.replay.files import DELIVERY_MARGIN
 from tickfold.replay.restored_day import WindowSummary, restore_day, save_restored_day, summarize_window
-from tickfold.replay.segment import DELIVERY_MARGIN
 
 # 갈아타기 코드를 배포해 다시 띄운 뒤 처음 저장된 프레임부터 72시간이다(2026-10-12 결정)
 JUDGMENT_WINDOW = ("2026-10-06T05:14:40.814", "2026-10-09T05:14:40.814")
