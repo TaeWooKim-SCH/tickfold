@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 30 1000 310" width="1000" height="310" role="img" aria-labelledby="figure2-title figure2-description">
+  <title id="figure2-title">그림 2. 단순 재연결과 중첩 재연결</title>
+  <desc id="figure2-description">단순 재연결은 약 48시간마다 거래소의 강제 종료로 8~9초 결측이 생긴다. 중첩 재연결은 12시간마다 새 연결을 먼저 열어 3초 이상 겹친 뒤 넘겨받아 결측이 생기지 않는다.</desc>
+  <defs>
+    <style>
+      text { font-family: Pretendard, "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+      .row-title { fill: #1c2b45; font-size: 20px; font-weight: 700; }
+      .row-sub { fill: #5a6780; font-size: 15px; }
+      .bar-label { fill: #ffffff; font-size: 15px; font-weight: 600; }
+      .gap-label { fill: #b85a1b; font-size: 16px; font-weight: 700; }
+      .gap-sub { fill: #b85a1b; font-size: 14px; }
+      .note { fill: #24549c; font-size: 15px; font-weight: 700; }
+      .tick { fill: #3b4a63; font-size: 15px; }
+      .footnote { fill: #5a6780; font-size: 15px; }
+    </style>
+  </defs>
+
+  <!-- 12시간 눈금 안내선. 48시간 선이 단순 재연결의 강제 종료와 맞는다 -->
+  <g stroke="#c9d3e3" stroke-width="1.5" stroke-dasharray="4 4">
+    <line x1="190" y1="60" x2="190" y2="290"/>
+    <line x1="365.6" y1="60" x2="365.6" y2="290"/>
+    <line x1="541.1" y1="60" x2="541.1" y2="290"/>
+    <line x1="716.7" y1="60" x2="716.7" y2="290"/>
+    <line x1="892.2" y1="60" x2="892.2" y2="290"/>
+  </g>
+
+  <!-- 단순 재연결 -->
+  <text class="row-title" x="10" y="88">단순 재연결</text>
+  <text class="row-sub" x="10" y="110">끊긴 뒤 다시 연결</text>
+  <rect x="190" y="66" width="702" height="40" rx="6" fill="#24549c"/>
+  <text class="bar-label" x="208" y="92">연결 1</text>
+  <rect x="892" y="66" width="26" height="40" fill="#f2994a"/>
+  <rect x="918" y="66" width="62" height="40" rx="6" fill="#24549c"/>
+  <text class="gap-label" x="980" y="54" text-anchor="end">강제 종료 · 결측 8.3~9.1초</text>
+  <text class="gap-sub" x="905" y="126" text-anchor="middle">종료 예고 없음</text>
+
+  <!-- 중첩 재연결: 두 줄을 번갈아 쓰며 겹친 동안 함께 받는다 -->
+  <text class="row-title" x="10" y="200">중첩 재연결</text>
+  <text class="row-sub" x="10" y="222">12시간마다 미리 교대</text>
+  <g fill="#cfdcef">
+    <rect x="352" y="164" width="14" height="76"/>
+    <rect x="527" y="164" width="14" height="76"/>
+    <rect x="703" y="164" width="14" height="76"/>
+    <rect x="878" y="164" width="14" height="76"/>
+  </g>
+  <rect x="190" y="170" width="176" height="28" rx="6" fill="#24549c"/>
+  <text class="bar-label" x="204" y="189">연결 1</text>
+  <rect x="352" y="206" width="189" height="28" rx="6" fill="#24549c"/>
+  <text class="bar-label" x="378" y="225">연결 2</text>
+  <rect x="527" y="170" width="190" height="28" rx="6" fill="#24549c"/>
+  <text class="bar-label" x="553" y="189">연결 3</text>
+  <rect x="703" y="206" width="189" height="28" rx="6" fill="#24549c"/>
+  <text class="bar-label" x="729" y="225">연결 4</text>
+  <rect x="878" y="170" width="102" height="28" rx="6" fill="#24549c"/>
+  <text class="bar-label" x="904" y="189">연결 5</text>
+  <text class="note" x="359" y="154" text-anchor="middle">3초 이상 겹친 뒤 넘겨받기</text>
+  <text class="note" x="980" y="262" text-anchor="end">교대 136회 시험: 누락 · 중복 0건</text>
+
+  <!-- 시간축 -->
+  <line x1="190" y1="290" x2="980" y2="290" stroke="#3b4a63" stroke-width="1.5"/>
+  <g stroke="#3b4a63" stroke-width="1.5">
+    <line x1="190" y1="290" x2="190" y2="297"/>
+    <line x1="365.6" y1="290" x2="365.6" y2="297"/>
+    <line x1="541.1" y1="290" x2="541.1" y2="297"/>
+    <line x1="716.7" y1="290" x2="716.7" y2="297"/>
+    <line x1="892.2" y1="290" x2="892.2" y2="297"/>
+  </g>
+  <text class="tick" x="190" y="315" text-anchor="middle">0</text>
+  <text class="tick" x="365.6" y="315" text-anchor="middle">12</text>
+  <text class="tick" x="541.1" y="315" text-anchor="middle">24</text>
+  <text class="tick" x="716.7" y="315" text-anchor="middle">36</text>
+  <text class="tick" x="892.2" y="315" text-anchor="middle">48시간</text>
+  <text class="footnote" x="10" y="334">겹침과 결측 구간은 보이도록 실제보다 넓게 그렸다.</text>
+</svg>

@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 10 980 580" width="980" height="580" role="img" aria-labelledby="figure1-title figure1-description">
+  <title id="figure1-title">그림 1. 시스템 구조도</title>
+  <desc id="figure1-description">1단계 수집(바이낸스 API, 수집기, 원본 저장), 2단계 복원과 검증(호가창 복원, 독립 채널 대조, 날짜별 복원 배열), 3단계 활용(DeepLOB 학습, 모의 매매)으로 이어지는 흐름.</desc>
+  <defs>
+    <style>
+      text { font-family: Pretendard, "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+      .phase { fill: #ffffff; font-size: 22px; font-weight: 700; }
+      .box-title { fill: #1c2b45; font-size: 21px; font-weight: 700; }
+      .line { fill: #3b4a63; font-size: 16px; }
+      .strong { fill: #24549c; font-size: 16px; font-weight: 700; }
+      .chip { fill: #1c2b45; font-size: 16px; font-weight: 600; }
+      .chip-solid { fill: #ffffff; font-size: 16px; font-weight: 700; }
+      .badge { fill: #ffffff; font-size: 14px; font-weight: 700; }
+      .connector { fill: none; stroke: #24549c; stroke-width: 2.5; }
+      .arrowhead { fill: #24549c; }
+    </style>
+  </defs>
+
+  <!-- 단계별 바탕과 머리 -->
+  <rect x="10" y="10" width="300" height="580" rx="14" fill="#f4f7fb"/>
+  <rect x="350" y="10" width="300" height="580" rx="14" fill="#f4f7fb"/>
+  <rect x="690" y="10" width="300" height="580" rx="14" fill="#f4f7fb"/>
+  <rect x="10" y="10" width="300" height="48" rx="14" fill="#24549c"/>
+  <rect x="10" y="34" width="300" height="24" fill="#24549c"/>
+  <rect x="350" y="10" width="300" height="48" rx="14" fill="#24549c"/>
+  <rect x="350" y="34" width="300" height="24" fill="#24549c"/>
+  <rect x="690" y="10" width="300" height="48" rx="14" fill="#24549c"/>
+  <rect x="690" y="34" width="300" height="24" fill="#24549c"/>
+  <text class="phase" x="160" y="42" text-anchor="middle">1단계 - 수집</text>
+  <text class="phase" x="500" y="42" text-anchor="middle">2단계 - 복원 및 검증</text>
+  <text class="phase" x="840" y="42" text-anchor="middle">3단계 - 활용</text>
+
+  <!-- 1단계 -->
+  <rect x="22" y="76" width="276" height="126" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="38" y="106">바이낸스 API</text>
+  <text class="line" x="38" y="136">WebSocket: 호가 변경(전 레벨)</text>
+  <text class="line" x="38" y="162">상위 20레벨(검증용), 체결</text>
+  <text class="line" x="38" y="188">REST: 전체 스냅샷 5,000레벨</text>
+
+  <line class="connector" x1="160" y1="202" x2="160" y2="219"/>
+  <polygon class="arrowhead" points="154.5,218 165.5,218 160,229"/>
+
+  <rect x="22" y="230" width="276" height="196" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="38" y="260">수집기</text>
+  <rect x="34" y="276" width="252" height="40" rx="8" fill="#e9eef5"/>
+  <circle cx="56" cy="296" r="12" fill="#24549c"/>
+  <text class="badge" x="56" y="301" text-anchor="middle">1</text>
+  <text class="chip" x="76" y="302">결측 탐지 · 자동 재동기화</text>
+  <rect x="34" y="324" width="252" height="40" rx="8" fill="#e9eef5"/>
+  <circle cx="56" cy="344" r="12" fill="#24549c"/>
+  <text class="badge" x="56" y="349" text-anchor="middle">2</text>
+  <text class="chip" x="76" y="350">중첩 재연결 (12시간마다)</text>
+  <rect x="34" y="372" width="252" height="40" rx="8" fill="#e9eef5"/>
+  <circle cx="56" cy="392" r="12" fill="#24549c"/>
+  <text class="badge" x="56" y="397" text-anchor="middle">3</text>
+  <text class="chip" x="76" y="398">스냅샷 갱신 (범위 · 10분)</text>
+
+  <line class="connector" x1="160" y1="426" x2="160" y2="443"/>
+  <polygon class="arrowhead" points="154.5,442 165.5,442 160,453"/>
+
+  <rect x="22" y="454" width="276" height="120" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <circle cx="44" cy="484" r="12" fill="#24549c"/>
+  <text class="badge" x="44" y="489" text-anchor="middle">4</text>
+  <text class="box-title" x="64" y="491">원본 저장</text>
+  <text class="line" x="38" y="522">무변환 저장, 1시간 단위 zstd</text>
+  <text class="strong" x="38" y="550">하루 2.68GB → 0.20GB (13배)</text>
+
+  <!-- 저장 파일을 복원과 대조가 함께 읽는다 -->
+  <path class="connector" d="M298,514 H330 V139 H351"/>
+  <polygon class="arrowhead" points="350,133.5 350,144.5 361,139"/>
+  <path class="connector" d="M330,328 H351"/>
+  <polygon class="arrowhead" points="350,322.5 350,333.5 361,328"/>
+
+  <!-- 2단계 -->
+  <rect x="362" y="76" width="276" height="126" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <circle cx="384" cy="100" r="12" fill="#24549c"/>
+  <text class="badge" x="384" y="105" text-anchor="middle">5</text>
+  <text class="box-title" x="404" y="107">호가창 복원</text>
+  <text class="line" x="378" y="136">순번대로 재생, 거래소 시각 기준</text>
+  <text class="line" x="378" y="162">시점마다 상위 20레벨</text>
+  <text class="line" x="378" y="188">무효 구간 표시 → 유효 시간 비율</text>
+
+  <line class="connector" x1="500" y1="202" x2="500" y2="219"/>
+  <polygon class="arrowhead" points="494.5,218 505.5,218 500,229"/>
+
+  <rect x="362" y="230" width="276" height="196" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <circle cx="384" cy="254" r="12" fill="#24549c"/>
+  <text class="badge" x="384" y="259" text-anchor="middle">5</text>
+  <text class="box-title" x="404" y="261">독립 채널 대조</text>
+  <rect x="374" y="276" width="252" height="40" rx="8" fill="#e9eef5"/>
+  <text class="chip" x="390" y="302">상위 20레벨 호가 (같은 연결)</text>
+  <rect x="374" y="324" width="252" height="40" rx="8" fill="#e9eef5"/>
+  <text class="chip" x="390" y="350">REST 스냅샷 (다른 경로)</text>
+  <rect x="374" y="372" width="252" height="40" rx="8" fill="#24549c"/>
+  <text class="chip-solid" x="390" y="398">→ 불일치율</text>
+
+  <line class="connector" x1="500" y1="426" x2="500" y2="443"/>
+  <polygon class="arrowhead" points="494.5,442 505.5,442 500,453"/>
+
+  <rect x="362" y="454" width="276" height="120" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="378" y="491">날짜별 복원 배열</text>
+  <text class="line" x="378" y="522">UTC 하루 한 파일 (.npz)</text>
+  <text class="line" x="378" y="550">상위 20레벨, 무효 구간 표시</text>
+
+  <path class="connector" d="M638,514 H670 V225 H691"/>
+  <polygon class="arrowhead" points="690,219.5 690,230.5 701,225"/>
+
+  <!-- 3단계 -->
+  <rect x="702" y="162" width="276" height="126" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="718" y="196">DeepLOB 학습</text>
+  <text class="line" x="718" y="228">깊이 20 vs 10, 시드 3개</text>
+  <text class="line" x="718" y="256">30초 후 평균 가격 방향 3분류</text>
+
+  <line class="connector" x1="840" y1="288" x2="840" y2="329"/>
+  <polygon class="arrowhead" points="834.5,328 845.5,328 840,339"/>
+
+  <rect x="702" y="340" width="276" height="126" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="718" y="374">모의 매매</text>
+  <text class="line" x="718" y="406">예측대로 사고팔기</text>
+  <text class="line" x="718" y="434">수수료 전 · 후 손익</text>
+</svg>

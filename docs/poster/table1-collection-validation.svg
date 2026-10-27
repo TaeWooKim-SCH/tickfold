@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 214" width="620" height="214" role="img" aria-labelledby="table1-title table1-description">
+  <title id="table1-title">표 1. 수집·검증 결과</title>
+  <desc id="table1-description">72시간 연속 운영 평가의 기준과 결과, 20일 전체 값. 재시작, 결측 구간, 재동기화 실패, 상위 20레벨 불일치율, REST 스냅샷 불일치율, 유효 시간 비율.</desc>
+  <defs>
+    <style>
+      text { font-family: Pretendard, "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; font-size: 15px; fill: #1f1f1f; }
+      .head { font-weight: 700; }
+    </style>
+  </defs>
+
+  <!-- 논문 표처럼 위·아래 굵은 선과 머리 아래 가는 선 셋만 긋는다 -->
+  <g stroke="#1f1f1f">
+    <line x1="0" y1="1" x2="620" y2="1" stroke-width="1.6"/>
+    <line x1="0" y1="32" x2="620" y2="32" stroke-width="0.8"/>
+    <line x1="0" y1="213" x2="620" y2="213" stroke-width="1.6"/>
+  </g>
+
+  <text class="head" x="6" y="22">항목</text>
+  <text class="head" x="265" y="22" text-anchor="middle">기준</text>
+  <text class="head" x="375" y="22" text-anchor="middle">72시간</text>
+  <text class="head" x="525" y="22" text-anchor="middle">20일 전체</text>
+
+  <text x="6" y="52">프로세스 재시작</text>
+  <text x="265" y="52" text-anchor="middle">0회</text>
+  <text x="375" y="52" text-anchor="middle">0회</text>
+  <text x="525" y="52" text-anchor="middle">3회</text>
+
+  <text x="6" y="82">결측 구간</text>
+  <text x="265" y="82" text-anchor="middle">-</text>
+  <text x="375" y="82" text-anchor="middle">3회</text>
+  <text x="525" y="82" text-anchor="middle">12회</text>
+
+  <text x="6" y="112">재동기화 실패</text>
+  <text x="265" y="112" text-anchor="middle">0회</text>
+  <text x="375" y="112" text-anchor="middle">0회</text>
+  <text x="525" y="112" text-anchor="middle">0회</text>
+
+  <text x="6" y="142">상위 20레벨 불일치율</text>
+  <text x="265" y="142" text-anchor="middle">0.01% 미만</text>
+  <text x="375" y="142" text-anchor="middle">0%</text>
+  <text x="525" y="142" text-anchor="middle">0% (전체 0.021%)</text>
+
+  <text x="6" y="172">REST 스냅샷 불일치율</text>
+  <text x="265" y="172" text-anchor="middle">-</text>
+  <text x="375" y="172" text-anchor="middle">0%</text>
+  <text x="525" y="172" text-anchor="middle">0%</text>
+
+  <text x="6" y="202">유효 시간 비율</text>
+  <text x="265" y="202" text-anchor="middle">99.9% 이상</text>
+  <text x="375" y="202" text-anchor="middle">99.975%</text>
+  <text x="525" y="202" text-anchor="middle">99.990%</text>
+</svg>

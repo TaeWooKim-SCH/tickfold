@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 154" width="620" height="154" role="img" aria-labelledby="table2-title table2-description">
+  <title id="table2-title">표 2. DeepLOB 테스트 결과</title>
+  <desc id="table2-description">테스트 구간 2026-10-10 ~ 10-16 의 정확도와 macro-F1. 상위 20레벨과 10레벨 입력은 시드 3개의 평균 ± 표준편차이고, 단순 규칙 기준과 항상 보합을 같이 싣는다.</desc>
+  <defs>
+    <style>
+      text { font-family: Pretendard, "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; font-size: 15px; fill: #1f1f1f; }
+      .head { font-weight: 700; }
+    </style>
+  </defs>
+
+  <!-- 위·아래 굵은 선, 머리 아래 가는 선, 모델과 기준 사이 가는 선 -->
+  <g stroke="#1f1f1f">
+    <line x1="0" y1="1" x2="620" y2="1" stroke-width="1.6"/>
+    <line x1="0" y1="32" x2="620" y2="32" stroke-width="0.8"/>
+    <line x1="0" y1="92" x2="620" y2="92" stroke-width="0.5"/>
+    <line x1="0" y1="153" x2="620" y2="153" stroke-width="1.6"/>
+  </g>
+
+  <text class="head" x="6" y="22">입력</text>
+  <text class="head" x="350" y="22" text-anchor="middle">정확도(%)</text>
+  <text class="head" x="525" y="22" text-anchor="middle">macro-F1(%)</text>
+
+  <text x="6" y="52">상위 20레벨</text>
+  <text x="350" y="52" text-anchor="middle">56.2 ± 0.2</text>
+  <text x="525" y="52" text-anchor="middle">56.4 ± 0.3</text>
+
+  <text x="6" y="82">상위 10레벨</text>
+  <text x="350" y="82" text-anchor="middle">56.4 ± 0.4</text>
+  <text x="525" y="82" text-anchor="middle">56.4 ± 0.4</text>
+
+  <text x="6" y="113">단순 규칙 기준</text>
+  <text x="350" y="113" text-anchor="middle">51.6</text>
+  <text x="525" y="113" text-anchor="middle">50.9</text>
+
+  <text x="6" y="143">항상 보합</text>
+  <text x="350" y="143" text-anchor="middle">34.1</text>
+  <text x="525" y="143" text-anchor="middle">-</text>
+</svg>
