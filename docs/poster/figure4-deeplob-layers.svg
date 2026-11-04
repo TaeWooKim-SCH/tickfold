@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 740" width="400" height="740" role="img" aria-labelledby="figure4-title figure4-description">
+  <title id="figure4-title">그림 4. DeepLOB 층 구성</title>
+  <desc id="figure4-description">Zhang et al.(2019) 그림 3 을 다시 그린 것. 입력, 합성곱 블록 셋, 인셉션, LSTM, 세 클래스(내림, 보합, 오름) 차례이고, 세 번째 블록의 1×10 커널을 1×N 으로 바꿨다.</desc>
+  <defs>
+    <style>
+      text { font-family: Pretendard, "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+      .layer { fill: #1c2b45; font-size: 17px; font-weight: 700; }
+      .group-title { fill: #24549c; font-size: 16px; font-weight: 700; }
+      .conv { fill: #1c2b45; font-size: 16px; }
+      .conv-changed { fill: #b85a1b; font-size: 16px; font-weight: 700; }
+      .class-label { fill: #1c2b45; font-size: 15px; font-weight: 600; }
+      .footnote { fill: #5a6780; font-size: 13px; }
+    </style>
+  </defs>
+
+  <!-- 입력 -->
+  <rect x="90" y="10" width="220" height="46" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="layer" x="200" y="39" text-anchor="middle">입력 100 × 4N</text>
+
+  <line x1="200" y1="56" x2="200" y2="71" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="194.5,70 205.5,70 200,81"/>
+
+  <!-- 합성곱 블록 셋. 논문 그림의 큰 상자 하나를 블록마다 나눠 층마다 글을 붙일 수 있게 했다 -->
+  <rect x="50" y="82" width="300" height="358" rx="14" fill="#f4f7fb" stroke="#24549c" stroke-width="2"/>
+  <text class="group-title" x="200" y="108" text-anchor="middle">합성곱</text>
+
+  <rect x="80" y="120" width="240" height="86" rx="8" fill="#ffffff" stroke="#24549c" stroke-width="1.5"/>
+  <text class="conv" x="200" y="146" text-anchor="middle">1×2@16 (stride 1×2)</text>
+  <text class="conv" x="200" y="170" text-anchor="middle">4×1@16</text>
+  <text class="conv" x="200" y="194" text-anchor="middle">4×1@16</text>
+
+  <line x1="200" y1="206" x2="200" y2="219" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="194.5,218 205.5,218 200,229"/>
+
+  <rect x="80" y="230" width="240" height="86" rx="8" fill="#ffffff" stroke="#24549c" stroke-width="1.5"/>
+  <text class="conv" x="200" y="256" text-anchor="middle">1×2@16 (stride 1×2)</text>
+  <text class="conv" x="200" y="280" text-anchor="middle">4×1@16</text>
+  <text class="conv" x="200" y="304" text-anchor="middle">4×1@16</text>
+
+  <line x1="200" y1="316" x2="200" y2="329" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="194.5,328 205.5,328 200,339"/>
+
+  <!-- 논문의 1×10 자리. 깊이 20 과 10 의 가중치가 다른 곳은 여기뿐이다 -->
+  <rect x="80" y="340" width="240" height="86" rx="8" fill="#ffffff" stroke="#f2994a" stroke-width="3"/>
+  <text class="conv-changed" x="200" y="366" text-anchor="middle">1×N@16 (N = 20, 10)</text>
+  <text class="conv" x="200" y="390" text-anchor="middle">4×1@16</text>
+  <text class="conv" x="200" y="414" text-anchor="middle">4×1@16</text>
+
+  <line x1="200" y1="440" x2="200" y2="455" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="194.5,454 205.5,454 200,465"/>
+
+  <!-- 인셉션. 논문 그림처럼 점선 -->
+  <rect x="90" y="466" width="220" height="46" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2" stroke-dasharray="6 4"/>
+  <text class="layer" x="200" y="495" text-anchor="middle">Inception@32</text>
+
+  <line x1="200" y1="512" x2="200" y2="527" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="194.5,526 205.5,526 200,537"/>
+
+  <rect x="90" y="538" width="220" height="46" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="layer" x="200" y="567" text-anchor="middle">LSTM@64</text>
+
+  <!-- 세 클래스. 화살촉은 선 방향으로 돌려 그린 다각형이다 -->
+  <line x1="200" y1="584" x2="142.94" y2="623.94" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="146.91,627.88 140.61,618.86 134.75,629.68"/>
+  <line x1="200" y1="584" x2="200" y2="611" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="194.5,610 205.5,610 200,621"/>
+  <line x1="200" y1="584" x2="257.06" y2="623.94" stroke="#24549c" stroke-width="2.5"/>
+  <polygon fill="#24549c" points="253.09,627.88 259.39,618.86 265.25,629.68"/>
+
+  <circle cx="120" cy="640" r="18" fill="#24549c"/>
+  <circle cx="200" cy="640" r="18" fill="#9aa5b8"/>
+  <circle cx="280" cy="640" r="18" fill="#c8443c"/>
+  <text class="class-label" x="120" y="682" text-anchor="middle">내림</text>
+  <text class="class-label" x="200" y="682" text-anchor="middle">보합</text>
+  <text class="class-label" x="280" y="682" text-anchor="middle">오름</text>
+
+  <text class="footnote" x="10" y="712">Zhang et al.(2019) 그림 3 을 다시 그림.</text>
+  <text class="footnote" x="10" y="730">1×10 칸을 1×N (N = 20, 10) 으로 바꿨다.</text>
+</svg>
