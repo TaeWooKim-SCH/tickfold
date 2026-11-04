@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1370 440" width="1370" height="440" role="img" aria-labelledby="figure3-title figure3-description">
+  <title id="figure3-title">그림 3. DeepLOB 구조</title>
+  <desc id="figure3-description">입력 창 100행 × 4N열이 합성곱 블록 셋을 지나 열 하나로 접히고, 시간 폭이 다른 인셉션 세 갈래와 LSTM 을 거쳐 내림, 보합, 오름 셋으로 나뉜다. 깊이 N 에 따라 바뀌는 가중치는 세 번째 블록의 1×N 커널 하나이고, 깊이 10 의 입력은 깊이 20 입력의 앞 40열이다.</desc>
+  <defs>
+    <style>
+      text { font-family: Pretendard, "Pretendard Variable", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+      .phase { fill: #ffffff; font-size: 20px; font-weight: 700; }
+      .box-title { fill: #1c2b45; font-size: 20px; font-weight: 700; }
+      .line { fill: #3b4a63; font-size: 15px; }
+      .sub { fill: #5a6780; font-size: 14px; }
+      .strong { fill: #24549c; font-size: 16px; font-weight: 700; }
+      .kernel { fill: #24549c; font-size: 17px; font-weight: 700; }
+      .kernel-changed { fill: #b85a1b; font-size: 17px; font-weight: 700; }
+      .chip { fill: #1c2b45; font-size: 15px; font-weight: 600; }
+      .cell { fill: #1c2b45; font-size: 13px; font-weight: 600; }
+      .tag { fill: #ffffff; font-size: 14px; font-weight: 700; }
+      .footnote { fill: #5a6780; font-size: 15px; }
+      .sub-small { fill: #5a6780; font-size: 13px; }
+    </style>
+  </defs>
+
+  <!-- 단계별 바탕과 머리. 그림 1 과 같은 모양 -->
+  <rect x="10" y="10" width="230" height="390" rx="14" fill="#f4f7fb"/>
+  <rect x="266" y="10" width="620" height="390" rx="14" fill="#f4f7fb"/>
+  <rect x="912" y="10" width="220" height="390" rx="14" fill="#f4f7fb"/>
+  <rect x="1158" y="10" width="202" height="390" rx="14" fill="#f4f7fb"/>
+  <rect x="10" y="10" width="230" height="48" rx="14" fill="#24549c"/>
+  <rect x="10" y="34" width="230" height="24" fill="#24549c"/>
+  <rect x="266" y="10" width="620" height="48" rx="14" fill="#24549c"/>
+  <rect x="266" y="34" width="620" height="24" fill="#24549c"/>
+  <rect x="912" y="10" width="220" height="48" rx="14" fill="#24549c"/>
+  <rect x="912" y="34" width="220" height="24" fill="#24549c"/>
+  <rect x="1158" y="10" width="202" height="48" rx="14" fill="#24549c"/>
+  <rect x="1158" y="34" width="202" height="24" fill="#24549c"/>
+  <text class="phase" x="125" y="41" text-anchor="middle">입력</text>
+  <text class="phase" x="576" y="41" text-anchor="middle">합성곱 블록 셋 - 레벨 축을 접는다</text>
+  <text class="phase" x="1022" y="41" text-anchor="middle">인셉션</text>
+  <text class="phase" x="1259" y="41" text-anchor="middle">LSTM과 출력</text>
+
+  <!-- 입력. 열 차례는 inputs.py 의 deeplob_columns 와 같다 -->
+  <rect x="22" y="76" width="206" height="312" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="36" y="106">입력 창</text>
+  <text class="kernel" x="36" y="140">100행 × 4N열</text>
+  <text class="line" x="36" y="168">N = 20 또는 10</text>
+  <text class="line" x="36" y="200">열 차례 (레벨마다 넷)</text>
+  <g fill="#e9eef5" stroke="#c9d3e3" stroke-width="1">
+    <rect x="31" y="212" width="46" height="36"/>
+    <rect x="77" y="212" width="46" height="36"/>
+    <rect x="127" y="212" width="46" height="36"/>
+    <rect x="173" y="212" width="46" height="36"/>
+  </g>
+  <text class="cell" x="54" y="235" text-anchor="middle">매도가</text>
+  <text class="cell" x="100" y="235" text-anchor="middle">매도량</text>
+  <text class="cell" x="150" y="235" text-anchor="middle">매수가</text>
+  <text class="cell" x="196" y="235" text-anchor="middle">매수량</text>
+  <text class="line" x="36" y="274">레벨 1부터 N까지 차례로</text>
+  <text class="line" x="36" y="302">100행은 약 10초</text>
+  <text class="sub" x="36" y="330">가격은 mid 대비 상대값,</text>
+  <text class="sub" x="36" y="350">수량은 log1p,</text>
+  <text class="sub" x="36" y="370">학습 구간 기준 z-score</text>
+
+  <line stroke="#24549c" stroke-width="2.5" x1="228" y1="160" x2="267" y2="160"/>
+  <polygon fill="#24549c" points="266,154.5 266,165.5 277,160"/>
+
+  <!-- 합성곱 블록 셋. 앞의 둘이 열을 둘씩 묶고, 셋째가 남은 N 열을 한 번에 접는다 -->
+  <rect x="278" y="76" width="180" height="186" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="292" y="106">블록 1</text>
+  <text class="kernel" x="292" y="138">1×2, 보폭 2</text>
+  <text class="line" x="292" y="166">가격과 수량을 묶음</text>
+  <text class="sub" x="292" y="192">레벨마다 4열 → 2열</text>
+  <text class="strong" x="292" y="248">100 × 2N × 16</text>
+
+  <line stroke="#24549c" stroke-width="2.5" x1="458" y1="160" x2="471" y2="160"/>
+  <polygon fill="#24549c" points="470,154.5 470,165.5 481,160"/>
+
+  <rect x="482" y="76" width="180" height="186" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="496" y="106">블록 2</text>
+  <text class="kernel" x="496" y="138">1×2, 보폭 2</text>
+  <text class="line" x="496" y="166">매도와 매수를 묶음</text>
+  <text class="sub" x="496" y="192">레벨마다 2열 → 1열</text>
+  <text class="strong" x="496" y="248">100 × N × 16</text>
+
+  <line stroke="#24549c" stroke-width="2.5" x1="662" y1="160" x2="675" y2="160"/>
+  <polygon fill="#24549c" points="674,154.5 674,165.5 685,160"/>
+
+  <!-- 깊이 20 과 10 의 가중치가 다른 곳은 이 커널 하나다 -->
+  <rect x="686" y="76" width="180" height="186" rx="10" fill="#ffffff" stroke="#f2994a" stroke-width="3"/>
+  <text class="box-title" x="700" y="106">블록 3</text>
+  <text class="kernel-changed" x="700" y="138">1×N</text>
+  <text class="line" x="700" y="166">레벨 N개를 하나로</text>
+  <text class="sub" x="700" y="192">N열 → 1열</text>
+  <rect x="700" y="206" width="152" height="28" rx="6" fill="#f2994a"/>
+  <text class="tag" x="776" y="225" text-anchor="middle">가중치가 다른 곳</text>
+  <text class="strong" x="700" y="252">100 × 1 × 16</text>
+
+  <rect x="278" y="286" width="588" height="40" rx="8" fill="#e9eef5"/>
+  <text class="chip" x="572" y="312" text-anchor="middle">블록마다 뒤에 시간 축 4×1 합성곱 둘 (필터 16)</text>
+  <rect x="278" y="336" width="588" height="40" rx="8" fill="#e9eef5"/>
+  <text class="chip" x="572" y="362" text-anchor="middle">모든 합성곱은 시간 축만 0으로 채워 100행을 지키고 Leaky-ReLU 를 거친다</text>
+
+  <line stroke="#24549c" stroke-width="2.5" x1="866" y1="160" x2="913" y2="160"/>
+  <polygon fill="#24549c" points="912,154.5 912,165.5 923,160"/>
+
+  <!-- 인셉션. 시간 폭이 다른 세 갈래를 채널 쪽으로 이어 붙인다 -->
+  <rect x="924" y="76" width="196" height="312" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="938" y="106">세 갈래</text>
+  <text class="line" x="938" y="134">시간 폭을 달리 본다</text>
+  <g fill="#e9eef5">
+    <rect x="936" y="148" width="172" height="38" rx="8"/>
+    <rect x="936" y="194" width="172" height="38" rx="8"/>
+    <rect x="936" y="240" width="172" height="38" rx="8"/>
+  </g>
+  <text class="chip" x="948" y="172">1×1 → 3×1</text>
+  <text class="chip" x="948" y="218">1×1 → 5×1</text>
+  <text class="chip" x="948" y="264">최대 풀링 3×1 → 1×1</text>
+  <text class="line" x="938" y="306">갈래마다 필터 32</text>
+  <text class="line" x="938" y="332">셋을 이어 붙임</text>
+  <text class="strong" x="938" y="368">100 × 1 × 96</text>
+
+  <line stroke="#24549c" stroke-width="2.5" x1="1120" y1="160" x2="1159" y2="160"/>
+  <polygon fill="#24549c" points="1158,154.5 1158,165.5 1169,160"/>
+
+  <!-- LSTM 과 출력 -->
+  <rect x="1170" y="76" width="178" height="136" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="1184" y="106">LSTM</text>
+  <text class="kernel" x="1184" y="136">은닉 64</text>
+  <text class="line" x="1184" y="164">100행을 차례로 읽고</text>
+  <text class="line" x="1184" y="190">마지막 상태를 넘긴다</text>
+
+  <line stroke="#24549c" stroke-width="2.5" x1="1259" y1="212" x2="1259" y2="229"/>
+  <polygon fill="#24549c" points="1253.5,228 1264.5,228 1259,239"/>
+
+  <rect x="1170" y="240" width="178" height="148" rx="10" fill="#ffffff" stroke="#24549c" stroke-width="2"/>
+  <text class="box-title" x="1184" y="270">출력</text>
+  <text class="line" x="1184" y="298">선형 3 → softmax</text>
+  <text class="kernel" x="1184" y="328">내림 / 보합 / 오름</text>
+  <text class="sub-small" x="1184" y="354">30초 평균 mid 변화가</text>
+  <text class="sub-small" x="1184" y="374">±α 안이면 보합</text>
+
+  <text class="footnote" x="10" y="428">크기는 행 × 열 × 채널. 파라미터는 N = 20 이 63,507개, N = 10 이 60,947개이고, 차이 2,560개는 모두 1×N 커널(16 × 16 × 10)에서 나온다.</text>
+</svg>
