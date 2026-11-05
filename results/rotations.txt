@@ -1,0 +1,20 @@
+# 수집기 로그의 교대 줄(겹치기 재연결). 시각은 KST, 2026-10-06 배포 뒤 ~ 2026-10-17 09:00 KST(10-16 UTC 끝). 서버 이름과 프로세스 번호는 뺐다
+2026-10-07T02:14:45.558629+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 89개 중 89개는 옛 연결이 이미 줬다
+2026-10-07T14:14:45.875611+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 327개 중 327개는 옛 연결이 이미 줬다
+2026-10-08T06:22:12.027344+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 101개 중 101개는 옛 연결이 이미 줬다
+2026-10-08T18:22:12.984678+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 92개 중 92개는 옛 연결이 이미 줬다
+2026-10-09T06:22:13.956318+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 430개 중 430개는 옛 연결이 이미 줬다
+2026-10-10T06:33:05.860800+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 86개 중 86개는 옛 연결이 이미 줬다
+2026-10-10T18:33:06.483147+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 92개 중 92개는 옛 연결이 이미 줬다
+2026-10-11T06:33:07.497771+09:00 INFO tickfold.collector.connection 교대: 겹친 3.8초 동안 쌓인 76개 중 76개는 옛 연결이 이미 줬다
+2026-10-11T18:33:07.764935+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 94개 중 94개는 옛 연결이 이미 줬다
+2026-10-12T06:33:08.069575+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 80개 중 80개는 옛 연결이 이미 줬다
+2026-10-12T18:33:08.382956+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 87개 중 87개는 옛 연결이 이미 줬다
+2026-10-13T06:33:08.517049+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 87개 중 87개는 옛 연결이 이미 줬다
+2026-10-13T18:33:09.385481+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 157개 중 157개는 옛 연결이 이미 줬다
+2026-10-14T06:33:10.421830+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 178개 중 178개는 옛 연결이 이미 줬다
+2026-10-14T18:33:11.260753+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 171개 중 171개는 옛 연결이 이미 줬다
+2026-10-15T06:33:12.018472+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 84개 중 84개는 옛 연결이 이미 줬다
+2026-10-15T23:27:38.636204+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 421개 중 421개는 옛 연결이 이미 줬다
+2026-10-16T11:27:39.149930+09:00 INFO tickfold.collector.connection 교대: 겹친 3.7초 동안 쌓인 132개 중 132개는 옛 연결이 이미 줬다
+2026-10-16T23:27:39.794811+09:00 INFO tickfold.collector.connection 교대: 겹친 3.9초 동안 쌓인 231개 중 231개는 옛 연결이 이미 줬다
