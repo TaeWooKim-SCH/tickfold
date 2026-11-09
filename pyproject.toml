@@ -1,7 +1,7 @@
 [project]
 name = "tickfold"
 version = "0.1.0"
-description = "Limit order book stream storage format and public benchmark"
+description = "High-frequency order book data collector for Bitcoin, with measured coverage and cross-channel validation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
