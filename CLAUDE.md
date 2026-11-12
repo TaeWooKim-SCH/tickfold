@@ -10,13 +10,13 @@ Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
 ## 명령
 - 테스트: `uv run pytest -q` (화면 자바스크립트 시험은 node 로 돈다. PATH 에 node 가 없으면 건너뛴다. screen·model 그룹을 안 깔았으면 그 그룹을 쓰는 시험을 건너뛴다. `-rs` 로 건너뛴 것을 본다)
 - 수집기 로컬 실행: `uv run --env-file .env python -m tickfold.collector.main`
-- 수집 서비스: `systemctl --user status tickfold-collector` · 로그는 `journalctl --user -u tickfold-collector -f`
+- 수집 서비스: 2026-11-12 16:43 KST 에 `systemctl --user disable --now tickfold-collector` 로 멈췄다. 다시 띄우려면 `systemctl --user enable --now ~/tickfold/deploy/tickfold-collector.service` · 로그는 `journalctl --user -u tickfold-collector -f`
 - 재생 화면용 구간 내보내기: `nice -n 19 uv run python scripts/export_replay_segment.py 2026-10-07T07:25:00 2026-10-07T07:40:00 segments/gap-0732.npz` (시각은 UTC 거래소 시각이고 구간은 2시간까지. `segments/` 는 git 밖)
 - 화면용 패키지 설치: `uv sync --group screen --inexact` (수집 서비스가 같은 `.venv` 를 쓰므로 `--inexact` 로 더하기만 한다)
 - 모델용 패키지 설치: `uv sync --group model --inexact` (torch·scikit-learn. 위와 같은 이유로 `--inexact`)
 - 그림용 패키지 설치: `uv sync --group figures --inexact` (matplotlib. 모의 매매 손익 곡선. 위와 같은 이유로 `--inexact`)
 - 날짜별 복원과 합계: `nice -n 19 ionice -c3 uv run python scripts/restore_days.py restore 2026-09-27 2026-10-16` 뒤 `nice -n 19 ionice -c3 uv run python scripts/restore_days.py summarize` (끝난 UTC 날짜만 받는다. 날짜마다 `restored/BTCUSDT/2026-10-08.npz` 하나, 0.58GB. 넷까지 같이 돌려 20일에 8분. summarize 는 전체 기간과 72시간 판정 창을 찍고, `--window START END` 를 주면 72시간 창 대신 준 창들을 찍는다. `restored/` 는 git 밖)
-- 수집기 journal 보관: `journalctl --user -u tickfold-collector --since "2026-09-27 00:00" --until "2026-10-18 09:00" -o short-iso-precise --no-pager > evidence/journal-tickfold-collector-2026-09-27_2026-10-17.txt` 와 같은 범위의 `-o json` 을 뜨고 `sha256sum evidence/journal-* > evidence/SHA256SUMS` (시각은 KST. 판정을 새로 하면 범위를 늘려 다시 뜬다)
+- 수집기 journal 보관: `journalctl --user -u tickfold-collector --since "2026-09-27 00:00" -o short-iso-precise --no-pager > evidence/journal-tickfold-collector-2026-09-27_2026-11-12.txt` 와 같은 범위의 `-o json` 을 뜨고 저장소 루트에서 `sha256sum evidence/journal-* > evidence/SHA256SUMS` (시각은 KST. 수집을 멈춘 2026-11-12 에 마지막으로 떴다)
 - 깊이별 학습: `nice -n 19 ionice -c3 uv run --group model python scripts/train_deeplob.py` (`restored/BTCUSDT` 를 읽어 `runs/deeplob/` 에 깊이·시드마다 result.json·predictions.npz·model.pt, 끝에 summary.json. 평가 구간은 설정을 다 정한 뒤 `--evaluate` 를 준 실행에서만 예측하고 채점한다. 기본은 깊이 20 과 10 이고 깊이 둘 × 시드 셋에 25분쯤. 깊이 5 와 1 은 `--depths 5 1 --evaluate --output runs/deeplob-depth5-1` 로 돌렸다. summary.json 은 그 실행의 깊이만 담아서 기본 폴더에 쓰면 20 과 10 의 것이 덮인다. GPU 가 안 잡히면 멈춘다. GPU 학습은 서버에서 한 번에 하나. `runs/` 는 git 밖)
 - 모의 매매: `nice -n 19 ionice -c3 uv run --group figures python scripts/paper_trading.py --predictions runs/deeplob/depth20-seed0/predictions.npz --figure runs/deeplob/depth20-seed0/paper_trading.png` (분할과 horizon 은 예측 옆 `result.json` 을 따른다. 모델 예측 전에는 `--predictions` 대신 `--random-predictions 0` 이고 그림은 `runs/` 아래에 둔다. 복원 폴더는 `--days-directory`, 기본 `restored/BTCUSDT`. 검증 구간에서 신호 문턱을 고르고 평가 구간을 한 번 돈다. 무작위 예측으로 열흘치에 4분, 최대 메모리 1.4GB. 서버에 한글 글꼴이 없어 그림 글자는 영어다)
 - 재생 화면: `nice -n 19 uv run --group screen streamlit run tickfold/screen/app.py` (구간 폴더는 `TICKFOLD_SEGMENTS`, 기본 `segments`. 127.0.0.1 로만 받는다. 서버 밖에서는 SSH 터널로 8501 포트)
@@ -31,8 +31,8 @@ Python 3.12, asyncio + websockets + aiohttp, numpy, zstandard, pytest.
 - `tickfold/paper_trading/` 모의 매매(5절, 조건부). 모델 예측과 기준선이 같은 규칙과 같은 셈을 탄다: market.py 날짜별 복원 파일에서 행마다 최우선 호가와 쓸 수 있는지(valid 두 컬럼이 다 참)를 꺼내 날짜를 이어 붙이기 · walk.py 신호를 받아 포지션 하나로 사고팔기(규칙 설정은 TradingRule 한 곳) · performance.py 수수료 전·후 손익, 거래당 bp, 최대 낙폭, 승률 · baselines.py 항상 보유, 최우선 호가 수량 불균형 규칙, 거래 수를 맞춘 무작위 신호 · predictions.py 모델 갈래가 쓴 predictions.npz 읽기와 신호 문턱, 모델 전 무작위 예측
 - 예정: `tickfold/reduce/` 축소 변환기(4절) · `experiments/` 실험 하네스(6절)
 - `deploy/` 운영: tickfold-collector.service systemd 사용자 유닛. 예정: docker-compose(2절)
-- `data/`는 git 밖. 절대 삭제·수정하지 말 것. 2026-09-27 부터 수집 서비스가 `data/raw` 에 쓰고 있다
-- `evidence/` 는 git 밖. 72시간 판정의 근거(재시작 0회, 끊김과 재동기화)로 떠 둔 수집기 journal 의 텍스트·JSON 과 SHA256SUMS. journal 은 시스템이 오래된 것부터 지우므로 이 사본을 지우지 말 것
+- `data/`는 git 밖. 절대 삭제·수정하지 말 것. 2026-09-27 16:07 ~ 2026-11-12 16:43 KST 에 수집 서비스가 `data/raw` 에 썼다
+- `evidence/` 는 git 밖. 72시간 판정의 근거(재시작 0회, 끊김과 재동기화)로 떠 둔 수집기 journal 의 텍스트·JSON 두 벌(2026-10-17 까지, 수집을 멈춘 2026-11-12 까지. 앞 벌의 텍스트는 뒤 벌의 첫 5,692줄과 같다)과 SHA256SUMS. journal 은 시스템이 오래된 것부터 지우므로 이 사본을 지우지 말 것
 - `results/` 는 git 안. `docs/results.md` 의 숫자 근거로 골라 둔 작은 파일이다(2026-11-04). `runs/` 에서 복사한 깊이·시드마다 result.json·paper_trading.txt, 학습 실행마다 summary.json(deeplob/ 는 깊이 20·10, deeplob-depth5-1/ 은 5·1), 손익 그림 하나, 무작위 예측 모의 매매(paper_trading_random.txt). 그리고 `restore_days.py summarize` 출력(restore-summary.txt), data/raw 를 잰 날짜별 원본 용량(raw-size.txt), `evidence/` journal 에서 서버 이름을 빼고 옮긴 교대 줄(rotations.txt). predictions.npz 는 실행마다 0.18GB 라, model.pt 는 원본 없이 쓸 데가 없어 안 올린다. 학습을 다시 돌리면 `runs/` 에서 다시 복사한다
 
 ## 규칙
